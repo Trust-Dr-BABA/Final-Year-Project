@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security Analyst</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <div class="popup-container">
+
+    <!-- Header -->
+    <header class="popup-header">
+      <span class="logo">🛡 ESA</span>
+      <span class="version">v0.1</span>
+    </header>
+
+    <!-- ── State: Scanning ─────────────────────────────────────── -->
+    <div id="state-scanning" class="state hidden">
+      <div class="spinner"></div>
+      <p class="state-label">Analyzing page...</p>
+    </div>
+
+    <!-- ── State: Safe ────────────────────────────────────────────── -->
+    <div id="state-safe" class="state hidden">
+      <div class="verdict-icon safe-icon">✓</div>
+      <h2 class="verdict-title safe-text">Page Looks Safe</h2>
+      <p class="confidence-badge safe-badge" id="safe-confidence"></p>
+    </div>
+
+    <!-- ── State: Suspicious ─────────────────────────────────────── -->
+    <div id="state-suspicious" class="state hidden">
+      <div class="verdict-icon suspicious-icon">⚠</div>
+      <h2 class="verdict-title suspicious-text">Proceed with Caution</h2>
+      <p class="confidence-badge suspicious-badge" id="suspicious-confidence"></p>
+      <ul class="reasons-list" id="suspicious-reasons"></ul>
+    </div>
+
+    <!-- ── State: Phishing ───────────────────────────────────────── -->
+    <div id="state-phishing" class="state hidden">
+      <div class="verdict-icon phishing-icon">✕</div>
+      <h2 class="verdict-title phishing-text">Phishing Detected</h2>
+      <p class="confidence-badge phishing-badge" id="phishing-confidence"></p>
+      <ul class="reasons-list" id="phishing-reasons"></ul>
+      <button class="btn-report" id="btn-view-report">View Full Report →</button>
+    </div>
+
+    <!-- ── State: Error ───────────────────────────────────────────── -->
+    <div id="state-error" class="state hidden">
+      <div class="verdict-icon error-icon">!</div>
+      <h2 class="verdict-title error-text">Analysis Failed</h2>
+      <p class="error-message" id="error-message"></p>
+      <button class="btn-retry" id="btn-retry">Retry</button>
+    </div>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <a href="#" id="btn-dashboard">Open Dashboard</a>
+    </footer>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

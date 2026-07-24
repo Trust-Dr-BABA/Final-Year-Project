@@ -1,0 +1,149 @@
+/* ── Design Tokens ─────────────────────────────────────────── */
+:root {
+  --bg:          #0f0f1a;
+  --card:        #1a1a2e;
+  --border:      #2a2a45;
+  --text:        #e2e8f0;
+  --text-muted:  #94a3b8;
+
+  --safe:        #22c55e;
+  --suspicious:  #f59e0b;
+  --phishing:    #ef4444;
+  --error:       #6b7280;
+
+  --safe-bg:        rgba(34, 197, 94, 0.12);
+  --suspicious-bg:  rgba(245, 158, 11, 0.12);
+  --phishing-bg:    rgba(239, 68, 68, 0.12);
+}
+
+/* ── Reset & Base ──────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  width: 320px;
+  min-height: 200px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 13px;
+}
+
+/* ── Layout ────────────────────────────────────────────────── */
+.popup-container {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 8px;
+  gap: 12px;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.logo { font-weight: 700; font-size: 14px; letter-spacing: 0.5px; }
+.version { color: var(--text-muted); font-size: 11px; }
+
+/* ── State containers ───────────────────────────────────────── */
+.state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 16px 0; }
+.hidden { display: none !important; }
+
+/* ── Verdict icons ──────────────────────────────────────────── */
+.verdict-icon {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px; font-weight: 700;
+}
+
+.safe-icon       { background: var(--safe-bg);       color: var(--safe); }
+.suspicious-icon { background: var(--suspicious-bg); color: var(--suspicious); }
+.phishing-icon   { background: var(--phishing-bg);   color: var(--phishing); }
+.error-icon      { background: rgba(107,114,128,0.15); color: var(--error); }
+
+/* ── Verdict title ──────────────────────────────────────────── */
+.verdict-title { font-size: 15px; font-weight: 600; }
+.safe-text        { color: var(--safe); }
+.suspicious-text  { color: var(--suspicious); }
+.phishing-text    { color: var(--phishing); }
+.error-text       { color: var(--error); }
+
+/* ── Confidence badge ───────────────────────────────────────── */
+.confidence-badge {
+  font-size: 12px; font-weight: 600;
+  padding: 3px 10px; border-radius: 999px;
+}
+.safe-badge       { background: var(--safe-bg);       color: var(--safe); }
+.suspicious-badge { background: var(--suspicious-bg); color: var(--suspicious); }
+.phishing-badge   { background: var(--phishing-bg);   color: var(--phishing); }
+
+/* ── Reasons list ───────────────────────────────────────────── */
+.reasons-list {
+  list-style: none;
+  width: 100%;
+  display: flex; flex-direction: column; gap: 6px;
+}
+
+.reasons-list li {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 10px;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.reasons-list li::before {
+  content: "›  ";
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.btn-report, .btn-retry {
+  margin-top: 4px;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 12px; font-weight: 600;
+  cursor: pointer; border: none;
+  transition: opacity 0.15s;
+}
+.btn-report:hover, .btn-retry:hover { opacity: 0.85; }
+
+.btn-report { background: var(--phishing); color: #fff; }
+.btn-retry  { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+
+/* ── Spinner ─────────────────────────────────────────────────── */
+.spinner {
+  width: 36px; height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.state-label { color: var(--text-muted); font-size: 13px; }
+
+/* ── Error message ──────────────────────────────────────────── */
+.error-message { color: var(--text-muted); font-size: 12px; text-align: center; max-width: 220px; }
+
+/* ── Footer ─────────────────────────────────────────────────── */
+.popup-footer {
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.popup-footer a {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.popup-footer a:hover { color: var(--text); }

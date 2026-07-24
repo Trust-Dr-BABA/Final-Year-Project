@@ -1,0 +1,22 @@
+{
+  "url_length":                "URL is unusually long ({value} characters)",
+  "num_digits":                "URL contains {value} digit characters, which is unusual",
+  "num_special_chars":         "URL contains {value} special characters often used in obfuscation",
+  "subdomain_depth":           "URL has {value} subdomain levels, which is unusually deep",
+  "has_https":                 "Page does not use a secure HTTPS connection",
+  "url_entropy":               "URL string randomness score is high ({value}), suggesting generated text",
+  "has_ip_in_hostname":        "URL uses a raw IP address instead of a domain name",
+  "suspicious_tld_flag":       "Domain uses a high-risk top-level domain extension commonly used in phishing",
+  "brand_impersonation":       "URL contains a well-known brand name in a suspicious position",
+  "domain_age_days":           "Domain was registered only {value} days ago",
+  "vt_malicious_votes":        "{value} security vendors have flagged this domain as malicious",
+  "vt_harmless_votes":         "{value} security vendors have verified this domain as safe",
+  "tracker_count":             "{value} third-party tracking scripts were loaded on this page",
+  "has_mixed_content":         "Page loads insecure (HTTP) resources inside a secure (HTTPS) page",
+  "redirect_chain_length":     "URL passed through {value} redirects before reaching this page",
+  "cam_mic_on_first_visit":    "Page requested access to your camera or microphone immediately on load",
+  "notification_prompt_on_load": "Page requested notification permission within 3 seconds of loading",
+  "location_on_load":          "Page requested your precise location immediately on load",
+  "excessive_trackers":        "More than 10 third-party tracking domains were detected on this page",
+  "long_redirect_chain":       "URL chain was unusually long — often used to hide the final destination"
+}

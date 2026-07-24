@@ -1,0 +1,51 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# ML model artifacts (large binary files)
+ml/models/*.pkl
+ml/models/*.joblib
+ml/data/raw/*.csv
+ml/data/processed/*.csv
+
+# Environment secrets
+.env
+!.env.example
+
+# Node
+node_modules/
+.next/
+dist/
+out/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Docker overrides
+docker-compose.override.yml
