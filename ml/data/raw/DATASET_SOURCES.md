@@ -21,3 +21,14 @@
 - PhishTank URLs reflect phishing activity at download time. Novel phishing patterns not in this snapshot may not be represented.
 - Tranco legitimate domains include only popular sites — the model may not generalize to obscure-but-legitimate low-traffic domains.
 - Class balance was _(fill in)_ phishing / _(fill in)_ legitimate.
+# Dataset Sources
+
+## PhishTank
+Source: http://data.phishtank.com/data/online-valid.csv
+Download Date: 25 July 2026
+Rows: 10000
+
+## Tranco
+Source: https://tranco-list.eu/download/AAAA/full
+Download Date: 25 July 2026
+Rows: 10000
