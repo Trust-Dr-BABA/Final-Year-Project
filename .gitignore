@@ -12,8 +12,7 @@ env/
 # ML model artifacts (large binary files)
 ml/models/*.pkl
 ml/models/*.joblib
-ml/data/raw/*.csv
-ml/data/processed/*.csv
+
 
 # Environment secrets
 .env
