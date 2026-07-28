@@ -34,12 +34,16 @@ def main():
     if "label" not in df.columns:
         raise ValueError("features.csv must contain a 'label' column")
 
-    feature_cols = [c for c in df.columns if c not in ("url", "label")]
+    feature_cols = [c for c in df.columns if c not in ("url", "label", "tld")]
     X = df[feature_cols].fillna(-1)
     y = df["label"]
 
     logger.info(f"Features: {feature_cols}")
     logger.info(f"Dataset size: {len(df)} rows | {y.sum()} phishing | {(y == 0).sum()} legitimate")
+    # Debug: verify feature data types
+    print("\n===== Feature Data Types =====")
+    print(X.dtypes)
+    print("==============================\n")
 
     # ── Train / test split ────────────────────────────────────────────────────
     X_train, X_test, y_train, y_test = train_test_split(
