@@ -10,9 +10,10 @@ import json
 import logging
 from pathlib import Path
 from typing import Any
-
+import pandas as pd
 import joblib
 import shap
+from backend.services.explainer_formatter import format_reason
 
 logger = logging.getLogger(__name__)
 
@@ -45,43 +46,93 @@ def _get_explainer():
     return _explainer, _model, _feature_columns
 
 
-def explain_prediction(feature_vector: dict) -> dict[str, Any]:
+def explain_prediction(feature_vector: dict) -> dict:
     """
-    Compute XGBoost prediction + SHAP explanation for a single URL.
-
-    Args:
-        feature_vector: Dict of feature_name -> value (same keys as feature_columns.json).
-
-    Returns:
-        {
-          "score": float,          # Raw phishing probability 0.0 – 1.0
-          "confidence_pct": int,   # Round(score * 100)
-          "label": str,            # "phishing" | "suspicious" | "legitimate"
-          "top_reasons": [
-            {
-              "feature": str,
-              "value": any,
-              "shap_impact": float,
-              "human_readable": str  # Populated by explainer_formatter
-            }
-          ]
-        }
-
-    TODO (Phase 2.4):
-      1. Convert feature_vector to ordered DataFrame using _feature_columns
-      2. Call model.predict_proba() → risk_score
-      3. Call explainer.shap_values() → shap_values
-      4. Pick top 3 features by abs(shap_impact)
-      5. Call format_reason() for each
-      6. Return full dict
+    Generate prediction + SHAP explanation for a single URL.
     """
+
     explainer, model, feature_columns = _get_explainer()
 
-    # ── STUB ─────────────────────────────────────────────────────────────────
-    # Replace this in Phase 2.4 with real implementation
+    # Arrange features in same order used during training
+    row = {}
+    for col in feature_columns:
+        row[col] = feature_vector.get(col, -1)
+
+    X = pd.DataFrame([row])
+
+    # Prediction
+    probability = float(model.predict_proba(X)[0][1])
+
+    if probability >= 0.80:
+        label = "phishing"
+    elif probability >= 0.50:
+        label = "suspicious"
+    else:
+        label = "legitimate"
+
+    # SHAP values
+    shap_values = explainer.shap_values(X)
+
+    # XGBoost binary classifier
+    if isinstance(shap_values, list):
+        shap_values = shap_values[1]
+
+    shap_values = shap_values[0]
+
+    reasons = []
+
+    for feature_name, shap_value in zip(feature_columns, shap_values):
+
+        reasons.append({
+
+            "feature": feature_name,
+
+            "value": row[feature_name],
+
+            "shap_impact": float(shap_value),
+
+            "human_readable": format_reason(
+                feature_name,
+                row[feature_name],
+                float(shap_value)
+            )["reason"]
+
+        })
+
+    # Top 3 most important features
+    reasons = sorted(
+        reasons,
+        key=lambda x: abs(x["shap_impact"]),
+        reverse=True
+    )[:3]
+
     return {
-        "score": 0.0,
-        "confidence_pct": 0,
-        "label": "legitimate",
-        "top_reasons": [],
+
+        "score": round(probability, 4),
+
+        "confidence_pct": round(probability * 100),
+
+        "label": label,
+
+        "top_reasons": reasons
+
+
     }
+if __name__ == "__main__":
+
+    sample = {
+
+        "url_length": 120,
+        "num_digits": 8,
+        "num_special_chars": 14,
+        "has_ip_address": 0,
+        "subdomain_depth": 2,
+        "has_https": 0,
+        "url_entropy": 5.3,
+        "suspicious_tld_flag": 1
+
+    }
+
+    result = explain_prediction(sample)
+
+    print(result)

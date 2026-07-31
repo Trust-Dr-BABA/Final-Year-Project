@@ -5,7 +5,7 @@ plain-English human-readable strings for display in the popup and dashboard.
 
 import json
 import logging
-import os
+
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -36,13 +36,26 @@ def format_reason(feature_name: str, value: object, shap_impact: float) -> str:
     Returns:
         A plain-English sentence safe to display in the UI.
         Falls back to a generic message if no template is found.
+         Convert a SHAP feature into a human-readable explanation.
+
+    Returns:
+        {
+            "reason": "...",
+            "impact": 0.543
+        }
     """
     template = TEMPLATES.get(feature_name)
+
     if not template:
         logger.debug(f"No template for feature: {feature_name}")
-        return f"Suspicious signal detected ({feature_name})"
+        reason = f"Suspicious signal detected ({feature_name})"
+    else:
+        try:
+            reason = template.replace("{value}", str(value))
+        except Exception:
+            reason = template
 
-    try:
-        return template.replace("{value}", str(value))
-    except Exception:
-        return template
+    return {
+        "reason": reason,
+        "impact": round(float(shap_impact), 4)
+    }
