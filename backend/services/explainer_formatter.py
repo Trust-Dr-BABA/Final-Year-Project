@@ -24,9 +24,9 @@ def _load_templates() -> dict:
 TEMPLATES: dict = _load_templates()
 
 
-def format_reason(feature_name: str, value: object, shap_impact: float) -> str:
+def format_reason(feature_name: str, value: object, shap_impact: float) -> dict:
     """
-    Convert a SHAP feature name and its value into a human-readable string.
+    Convert a SHAP feature name and its value into a human-readable explanation.
 
     Args:
         feature_name: Snake_case feature name (e.g., "domain_age_days")
@@ -34,15 +34,10 @@ def format_reason(feature_name: str, value: object, shap_impact: float) -> str:
         shap_impact:  The SHAP impact (positive = increases phishing probability)
 
     Returns:
-        A plain-English sentence safe to display in the UI.
+        Dict with keys:
+            "reason": Plain-English sentence safe to display in the UI.
+            "impact": Rounded SHAP impact float.
         Falls back to a generic message if no template is found.
-         Convert a SHAP feature into a human-readable explanation.
-
-    Returns:
-        {
-            "reason": "...",
-            "impact": 0.543
-        }
     """
     template = TEMPLATES.get(feature_name)
 

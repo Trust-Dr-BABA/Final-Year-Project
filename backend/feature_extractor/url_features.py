@@ -95,7 +95,7 @@ def extract_url_features(url: str, vt_data: dict | None = None) -> dict[str, Any
     features["subdomain_depth"] = hostname.count(".") - 1 if hostname else 0
     features["has_https"] = int(url.startswith("https://"))
     features["url_entropy"] = round(_shannon_entropy(url), 4)
-    features["has_ip_in_hostname"] = int(_has_ip_address(hostname))
+    features["has_ip_address"] = int(_has_ip_address(hostname))
 
     # ── Suspicious TLD flag ───────────────────────────────────────────────────
     features["suspicious_tld_flag"] = int(tld.lower() in SUSPICIOUS_TLDS)
@@ -128,7 +128,7 @@ def get_feature_names() -> list[str]:
         "subdomain_depth",
         "has_https",
         "url_entropy",
-        "has_ip_in_hostname",
+        "has_ip_address",
         "suspicious_tld_flag",
         "brand_impersonation",
         "domain_age_days",

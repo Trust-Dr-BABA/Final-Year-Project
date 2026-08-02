@@ -241,6 +241,57 @@ The Chrome Extension is the user-facing part that runs inside the browser. It ha
 
 ---
 
+## 3.1 Dashboard — `dashboard/`
+
+The dashboard is a Next.js 14 App Router web application that provides analytics, risk distribution metrics, and detailed scan reports.
+
+---
+
+### `dashboard/lib/types.ts`
+**What it does:** TypeScript interface definitions matching the FastAPI backend API schemas (`Scan`, `Stats`, `ShapReason`, `Verdict`, `NetworkSignals`, `PermissionSignals`).
+
+---
+
+### `dashboard/lib/api.ts`
+**What it does:** Typed API client module containing `getStats()`, `getHistory()`, and `getScan()` functions that interact with the FastAPI backend endpoint `NEXT_PUBLIC_BACKEND_URL`.
+
+---
+
+### `dashboard/components/VerdictBadge.tsx`
+**What it does:** Reusable UI pill badge component that renders color-coded verdict indicators (Red for Phishing, Amber for Suspicious, Green for Legitimate).
+
+---
+
+### `dashboard/components/ConfidenceBadge.tsx`
+**What it does:** Reusable UI pill badge component that displays the model's confidence percentage with contextual threat colors.
+
+---
+
+### `dashboard/components/layout/Navbar.tsx`
+**What it does:** Sticky top navigation bar matching the Chrome extension dark theme palette (`#0f0f1a`), featuring app logo, navigation links, and API docs link.
+
+---
+
+### `dashboard/components/layout/PageWrapper.tsx`
+**What it does:** Container component enforcing consistent responsive padding and max-width layout across all dashboard pages.
+
+---
+
+### `dashboard/app/globals.css`
+**What it does:** Global Tailwind CSS setup integrated with custom design system variables (`--bg`, `--card`, `--border`, `--safe`, `--suspicious`, `--phishing`).
+
+---
+
+### `dashboard/app/layout.tsx`
+**What it does:** Root layout component providing Inter font initialization, global metadata, dark background styling, and embedding the `Navbar`.
+
+---
+
+### `dashboard/app/page.tsx`
+**What it does:** Overview page displaying 4 primary stat cards (Total Scans, Phishing Detected, Suspicious, Legitimate), average confidence score card, and risk distribution breakdown chart area.
+
+---
+
 ## 4. Backend — `backend/`
 
 The backend is a Python web server. It receives signals from the extension, runs the ML model, and returns a verdict with explanations.
@@ -415,6 +466,16 @@ The ML directory is separate from the backend because training is an **offline p
 
 ---
 
+### `ml/features/url_features.py`
+**What it does:** Lexical URL feature extractor. Extracts numerical features from raw URL strings (length, digit count, special chars, subdomain depth, HTTPS scheme, Shannon entropy, suspicious TLD flag, IP address detection).
+
+---
+
+### `ml/scripts/generate_features.py`
+**What it does:** Reads `dataset.csv`, applies `extract_url_features` to all rows using `pandas.progress_apply`, and exports `ml/data/processed/features.csv` ready for model training.
+
+---
+
 ### `ml/shap_analysis.py`
 **What it does:** Wraps the trained model with a SHAP TreeExplainer to produce per-prediction feature attributions.
 
@@ -422,7 +483,7 @@ The ML directory is separate from the backend because training is an **offline p
 
 **Why TreeExplainer specifically:** There are multiple SHAP explainer types. `TreeExplainer` is designed for tree-based models (XGBoost is a tree ensemble). It's faster and more accurate than the generic `KernelExplainer` for this model type.
 
-**Status:** Skeleton with TODO — `explain_prediction()` is stubbed and will be implemented in Phase 2.4.
+**Status:** Implemented — `explain_prediction()` takes a feature vector dictionary and returns probabilities, confidence percentage, verdict label, and top 3 human-readable SHAP reasons.
 
 ---
 
@@ -626,3 +687,4 @@ Here is a complete walkthrough of what happens when you visit a suspicious page:
 | 2026-07-24 | AntiGravity | `ROADMAP.md`, `PROJECT_STATE.md`, `.cursor/rules/agent-sync.mdc` | **Initial planning session.** Analysed `FYP_Refined_Project_Plan.md`. Generated 8-phase ROADMAP with granular tasks and acceptance criteria. Set up two-agent workflow protocol. Created Cursor sync rules. |
 | 2026-07-24 | AntiGravity | `ROADMAP.md` (rewrite), all skeleton files | **Feature audit + skeleton scaffold.** Applied improvements: replaced WHOIS with VirusTotal API (faster, richer), removed live URL re-fetch from backend (security risk + latency), added `suspicious_tld_flag` (zero-cost high-signal feature), added `confidence_pct` throughout all schemas (better UX), added `feature_name_to_human_readable.json` (prevents raw feature names in UI), added baseline comparison task to evaluation (answers "why not just a blocklist?" for viva), added in-memory caching for VT client, removed Options Page (complexity with zero academic value). Created full project skeleton: 30+ files across backend, extension, ml, shared, tests, docker directories. Project is ready to start Phase 1 execution. |
 | 2026-07-24 | AntiGravity | `CODEBASE_GUIDE.md`, `.cursor/rules/agent-sync.mdc` | **Documentation & Rulebook creation.** Created `CODEBASE_GUIDE.md` explaining all files, architecture, data flows, and rationale for daily review. Updated `.cursor/rules/agent-sync.mdc` to mandate updating `CODEBASE_GUIDE.md` session log after every task and session. |
+| 2026-08-02 | AntiGravity | `.gitignore`, `ml/shap_analysis.py`, `backend/services/explainer_formatter.py`, `backend/feature_extractor/url_features.py`, `ml/scripts/train_model.py`, `PROJECT_STATE.md`, `CODEBASE_GUIDE.md` | **Code review, bug fixes & documentation update.** Fixed 5 bugs across gitignore, SHAP thresholds (0.80/0.50 -> 0.70/0.40 ADR), explainer formatter return type, feature name mismatch (`has_ip_in_hostname` -> `has_ip_address`), and logger format. Updated project state and guide. Initialized Next.js 14 dashboard skeleton. |

@@ -63,9 +63,9 @@ def explain_prediction(feature_vector: dict) -> dict:
     # Prediction
     probability = float(model.predict_proba(X)[0][1])
 
-    if probability >= 0.80:
+    if probability > 0.70:
         label = "phishing"
-    elif probability >= 0.50:
+    elif probability >= 0.40:
         label = "suspicious"
     else:
         label = "legitimate"

@@ -41,9 +41,9 @@ def main():
     logger.info(f"Features: {feature_cols}")
     logger.info(f"Dataset size: {len(df)} rows | {y.sum()} phishing | {(y == 0).sum()} legitimate")
     # Debug: verify feature data types
-    print("\n===== Feature Data Types =====")
-    print(X.dtypes)
-    print("==============================\n")
+    logger.debug("\n===== Feature Data Types =====")
+    logger.debug(f"\n{X.dtypes}")
+    logger.debug("==============================\n")
 
     # ── Train / test split ────────────────────────────────────────────────────
     X_train, X_test, y_train, y_test = train_test_split(
