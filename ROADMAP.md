@@ -21,12 +21,12 @@
 
 ### 1.1 — Monorepo & Tooling Bootstrap
 
-- [ ] **1.1.1** The top-level directory structure is already scaffolded (skeleton files committed). Verify all directories exist: `backend/`, `extension/`, `dashboard/`, `ml/`, `shared/`, `tests/`, `docker/`
-- [ ] **1.1.2** Initialize a single root `package.json` with workspaces pointing to `extension/` and `dashboard/`
-- [ ] **1.1.3** Verify `backend/pyproject.toml` has all pinned deps: `fastapi`, `uvicorn`, `sqlalchemy[asyncio]`, `asyncpg`, `xgboost`, `shap`, `pandas`, `scikit-learn`, `python-dotenv`, `alembic`, `httpx`, `tldextract`
-- [ ] **1.1.4** Copy `.env.example` to `.env` and fill in: `DATABASE_URL`, `VIRUSTOTAL_API_KEY` (get free key at https://www.virustotal.com/gui/sign-in), `MODEL_PATH`, `BACKEND_URL`
-- [ ] **1.1.5** Run `docker-compose up` from `docker/` — verify all three services start cleanly
-- [ ] **1.1.6** Verify `GET http://localhost:8000/health` returns `{"status": "ok"}`
+- ✅ **1.1.1** The top-level directory structure is already scaffolded (skeleton files committed). Verify all directories exist: `backend/`, `extension/`, `dashboard/`, `ml/`, `shared/`, `tests/`, `docker/`
+- ✅ **1.1.2** Initialize a single root `package.json` with workspaces pointing to `extension/` and `dashboard/`
+- ✅ **1.1.3** Verify `backend/pyproject.toml` has all pinned deps: `fastapi`, `uvicorn`, `sqlalchemy[asyncio]`, `asyncpg`, `xgboost`, `shap`, `pandas`, `scikit-learn`, `python-dotenv`, `alembic`, `httpx`, `tldextract`
+- ✅ **1.1.4** Copy `.env.example` to `.env` and fill in: `DATABASE_URL`, `VIRUSTOTAL_API_KEY` (get free key at https://www.virustotal.com/gui/sign-in), `MODEL_PATH`, `BACKEND_URL`
+- ✅ **1.1.5** Run `docker-compose up` from `docker/` — verify all three services start cleanly
+- ✅ **1.1.6** Verify `GET http://localhost:8000/health` returns `{"status": "ok"}`
 
 **Acceptance Criteria:**
 - `docker-compose up` starts postgres + backend + dashboard with no errors
@@ -37,11 +37,11 @@
 
 ### 1.2 — Chrome Extension Skeleton (MV3)
 
-- [ ] **1.2.1** Load the unpacked extension in Chrome: open `chrome://extensions` → enable Developer mode → "Load unpacked" → select `extension/` folder
-- [ ] **1.2.2** Verify popup appears when clicking the extension icon and shows "Extension Active"
-- [ ] **1.2.3** Open the service worker console (chrome://extensions → "Service Worker" link) and verify "Extension loaded" is logged
-- [ ] **1.2.4** Navigate to any page and verify "Content script injected: [url]" appears in the page's DevTools console
-- [ ] **1.2.5** Add real 16x16, 48x48, 128x128 PNG icons to `extension/icons/` (use any placeholder security/shield icon; the skeleton has text placeholders)
+- ✅ **1.2.1** Load the unpacked extension in Chrome: open `chrome://extensions` → enable Developer mode → "Load unpacked" → select `extension/` folder
+- ✅ **1.2.2** Verify popup appears when clicking the extension icon and shows "Extension Active"
+- ✅ **1.2.3** Open the service worker console (chrome://extensions → "Service Worker" link) and verify "Extension loaded" is logged
+- ✅ **1.2.4** Navigate to any page and verify "Content script injected: [url]" appears in the page's DevTools console
+- ✅ **1.2.5** Add real 16x16, 48x48, 128x128 PNG icons to `extension/icons/` (use any placeholder security/shield icon; the skeleton has text placeholders)
 
 **Acceptance Criteria:**
 - Extension loads in Chrome with zero manifest errors
@@ -52,12 +52,12 @@
 
 ### 1.3 — Dataset Collection & Cleaning
 
-- [ ] **1.3.1** Download PhishTank verified phishing URLs CSV from `http://data.phishtank.com/data/online-valid.csv` — save to `ml/data/raw/phishtank.csv`. Target: 5,000–10,000 rows. **Record the download date in `ml/data/raw/DATASET_SOURCES.md`**
-- [ ] **1.3.2** Download Tranco Top-1M CSV from `https://tranco-list.eu/download/AAAA/full` — save to `ml/data/raw/tranco.csv`. Sample 5,000–10,000 rows. Record the list date in `DATASET_SOURCES.md`
-- [ ] **1.3.3** Create `ml/data/raw/DATASET_SOURCES.md` — document: source URLs, download dates, row counts. This becomes the citation in your evaluation report
-- [ ] **1.3.4** Run `python ml/scripts/prepare_dataset.py` — merges CSVs, assigns labels, deduplicates, shuffles, saves to `ml/data/processed/dataset.csv`
-- [ ] **1.3.5** Open `ml/notebooks/01_data_exploration.ipynb` — run all cells, verify class distribution bar chart renders and shows ≥ 40% of each class
-- [ ] **1.3.6** Verify class balance: if imbalanced, set `SCALE_POS_WEIGHT` env var note in `ml/scripts/train_model.py`
+- ✅ **1.3.1** Download PhishTank verified phishing URLs CSV from `http://data.phishtank.com/data/online-valid.csv` — save to `ml/data/raw/phishtank.csv`. Target: 5,000–10,000 rows. **Record the download date in `ml/data/raw/DATASET_SOURCES.md`**
+- ✅ **1.3.2** Download Tranco Top-1M CSV from `https://tranco-list.eu/download/AAAA/full` — save to `ml/data/raw/tranco.csv`. Sample 5,000–10,000 rows. Record the list date in `DATASET_SOURCES.md`
+- ✅ **1.3.3** Create `ml/data/raw/DATASET_SOURCES.md` — document: source URLs, download dates, row counts. This becomes the citation in your evaluation report
+- ✅ **1.3.4** Run `python ml/scripts/prepare_dataset.py` — merges CSVs, assigns labels, deduplicates, shuffles, saves to `ml/data/processed/dataset.csv`
+- ✅ **1.3.5** Open `ml/notebooks/01_data_exploration.ipynb` — run all cells, verify class distribution bar chart renders and shows ≥ 40% of each class
+- ✅ **1.3.6** Verify class balance: if imbalanced, set `SCALE_POS_WEIGHT` env var note in `ml/scripts/train_model.py`
 
 **Acceptance Criteria:**
 - `ml/data/processed/dataset.csv` exists with columns: `url`, `label`
