@@ -11,6 +11,26 @@
 // ── Tracker domain list (populated in Phase 3) ────────────────────────────
 // Will be loaded from shared/tracker_domains.json
 let TRACKER_DOMAINS = new Set();
+// Load tracker domains once when the extension starts
+(async function loadTrackerDomains() {
+    try {
+        const url = chrome.runtime.getURL("shared/tracker_domains.json");
+        console.log("[ESA] Loading tracker list from:", url);
+
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const domains = await response.json();
+        TRACKER_DOMAINS = new Set(domains);
+
+        console.log(`[ESA] Loaded ${TRACKER_DOMAINS.size} tracker domains.`);
+    } catch (err) {
+        console.error("[ESA] Failed to load tracker domains:", err);
+    }
+})();
 
 // Per-tab signal accumulators
 const tabSignals = {};
@@ -19,6 +39,7 @@ const tabSignals = {};
  * Initialize signal tracking for a new tab navigation.
  * @param {number} tabId
  */
+
 function initTabSignals(tabId) {
   tabSignals[tabId] = {
     tracker_count: 0,
@@ -57,6 +78,16 @@ chrome.webRequest.onCompleted.addListener(
 
     const signals = tabSignals[details.tabId];
     const requestHostname = new URL(details.url).hostname;
+    // Check if request belongs to a known tracker
+const isTracker = [...TRACKER_DOMAINS].some(domain =>
+    requestHostname === domain ||
+    requestHostname.endsWith("." + domain)
+);
+
+if (isTracker) {
+    signals.tracker_domains_seen.add(requestHostname);
+    signals.tracker_count = signals.tracker_domains_seen.size;
+}
 
     // TODO (Task 3.1.2): Check if requestHostname is in TRACKER_DOMAINS
     // if (TRACKER_DOMAINS.has(requestHostname)) {

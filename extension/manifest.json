@@ -4,12 +4,13 @@
   "version": "0.1.0",
   "description": "AI-powered phishing and privacy risk detector with plain-English explanations.",
 
-  "permissions": [
-    "activeTab",
-    "storage",
-    "webRequest",
-    "tabs"
-  ],
+"permissions": [
+  "activeTab",
+  "storage",
+  "webRequest",
+  "webNavigation",
+  "tabs"
+],
   "host_permissions": ["<all_urls>"],
 
   "background": {
@@ -40,6 +41,14 @@
     "48":  "icons/icon48.png",
     "128": "icons/icon128.png"
   },
+  "web_accessible_resources": [
+  {
+    "resources": [
+      "shared/tracker_domains.json"
+    ],
+    "matches": ["<all_urls>"]
+  }
+],
 
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
