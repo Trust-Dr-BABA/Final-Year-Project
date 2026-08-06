@@ -4,6 +4,8 @@
  * calls the backend API, caches results, and updates the extension badge.
  */
 
+import "./modules/network_monitor.js";
+// import "./modules/permission_monitor.js";
 import { analyzePage } from "./services/api_client.js";
 
 // ── Extension lifecycle ────────────────────────────────────────────────────
