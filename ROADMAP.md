@@ -73,8 +73,8 @@
 
 ### 2.1 — URL Feature Extraction
 
-- [ ] **2.1.1** Open `ml/features/url_features.py` — the skeleton is already present. Review the `extract_url_features(url: str) -> dict` function signature
-- [ ] **2.1.2** Implement all lexical features in `url_features.py`:
+- ✅ **2.1.1** Open `ml/features/url_features.py` — the skeleton is already present. Review the `extract_url_features(url: str) -> dict` function signature
+- ✅ **2.1.2** Implement all lexical features in `url_features.py`:
   - URL length, number of digits, number of special chars (`-`, `_`, `@`, `?`, `=`, `%`)
   - Presence of IP address in hostname (regex: `\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}`)
   - Subdomain depth (count of `.` in hostname minus 1)
@@ -82,14 +82,14 @@
   - `has_https`: True/False
   - URL entropy (Shannon entropy of the full URL string)
   - **`suspicious_tld_flag`**: True if TLD is in `[".xyz", ".top", ".tk", ".ml", ".ga", ".cf", ".gq", ".pw", ".cc", ".su"]` — pure string check, zero latency
-- [ ] **2.1.3** Implement VirusTotal domain reputation feature (replaces WHOIS):
+- ✅ **2.1.3** Implement VirusTotal domain reputation feature (replaces WHOIS):
   - Create `ml/features/virustotal_client.py` — async `get_domain_info(domain: str) -> dict` using `httpx.AsyncClient`
   - Endpoint: `GET https://www.virustotal.com/api/v3/domains/{domain}` with `x-apikey` header
   - Extract: `domain_age_days` (from `creation_date` attribute), `vt_malicious_votes` (count of malicious vendor detections), `vt_harmless_votes`
   - Return `{"domain_age_days": int, "vt_malicious_votes": int, "vt_harmless_votes": int}` — return all `-1` on any error/timeout (5s timeout)
   - **Rate limit:** 4 req/min on free tier. Cache results in memory with `functools.lru_cache` (TTL via `cachetools.TTLCache`, 1 hour)
-- [ ] **2.1.4** Implement brand-impersonation feature: load `shared/brand_list.txt` (top 50 brand names); check if any brand name appears in the URL but is NOT the registrable domain (e.g., `paypal-login.net` → True)
-- [ ] **2.1.5** Write unit tests in `tests/unit/test_url_features.py`:
+- ✅ **2.1.4** Implement brand-impersonation feature: load `shared/brand_list.txt` (top 50 brand names); check if any brand name appears in the URL but is NOT the registrable domain (e.g., `paypal-login.net` → True)
+-✅ **2.1.5** Write unit tests in `tests/unit/test_url_features.py`:
   - Test each feature against 3 known phishing URLs and 3 legitimate URLs
   - Mock the VirusTotal client using `unittest.mock.patch` — do NOT make real API calls in tests
 
@@ -103,7 +103,7 @@
 
 ### 2.2 — Feature Name → Human-Readable Mapper
 
-- [ ] **2.2.1** Populate `shared/feature_name_to_human_readable.json` — the skeleton has the structure. Add a plain-English template for every feature:
+- ✅ **2.2.1** Populate `shared/feature_name_to_human_readable.json` — the skeleton has the structure. Add a plain-English template for every feature:
   ```json
   {
     "url_length": "URL is unusually long ({value} characters)",
@@ -119,8 +119,8 @@
     "notification_prompt_on_load": "Page requested notification permission within 3 seconds of loading"
   }
   ```
-- [ ] **2.2.2** Create `backend/services/explainer_formatter.py` — `format_reason(feature_name: str, value: any, shap_impact: float) -> str` function that looks up the template and substitutes `{value}` with the actual value
-- [ ] **2.2.3** Write unit test in `tests/unit/test_explainer_formatter.py` — test that `format_reason("domain_age_days", 2, 0.45)` returns `"Domain was registered only 2 days ago"`
+- ✅ **2.2.2** Create `backend/services/explainer_formatter.py` — `format_reason(feature_name: str, value: any, shap_impact: float) -> str` function that looks up the template and substitutes `{value}` with the actual value
+- ✅ **2.2.3** Write unit test in `tests/unit/test_explainer_formatter.py` — test that `format_reason("domain_age_days", 2, 0.45)` returns `"Domain was registered only 2 days ago"`
 
 **Acceptance Criteria:**
 - All features in `url_features.py` have a corresponding entry in `feature_name_to_human_readable.json`
@@ -131,11 +131,11 @@
 
 ### 2.3 — Model Training Pipeline
 
-- [ ] **2.3.1** Open `ml/notebooks/02_feature_engineering.ipynb` — apply `extract_url_features` to every row of `dataset.csv`; use `pd.DataFrame.apply` with a progress bar (`tqdm`); save as `ml/data/processed/features.csv`
-- [ ] **2.3.2** Run `python ml/scripts/train_model.py` — loads `features.csv`, splits 80/20 (stratified), trains `XGBClassifier` (`n_estimators=200`, `max_depth=6`, `learning_rate=0.1`, `eval_metric="logloss"`)
-- [ ] **2.3.3** Verify model saves: `ml/models/xgboost_phishing.pkl` and `ml/models/feature_columns.json` both exist after training
-- [ ] **2.3.4** Open `ml/notebooks/03_model_evaluation.ipynb` — run all cells; verify confusion matrix, classification report (precision/recall/F1), and ROC-AUC curve render correctly
-- [ ] **2.3.5** *(Optional — only if F1 looks suspicious)* Add 5-fold `StratifiedKFold` cross-validation to `train_model.py` and log mean ± std F1
+- ✅ **2.3.1** Open `ml/notebooks/02_feature_engineering.ipynb` — apply `extract_url_features` to every row of `dataset.csv`; use `pd.DataFrame.apply` with a progress bar (`tqdm`); save as `ml/data/processed/features.csv`
+- ✅ **2.3.2** Run `python ml/scripts/train_model.py` — loads `features.csv`, splits 80/20 (stratified), trains `XGBClassifier` (`n_estimators=200`, `max_depth=6`, `learning_rate=0.1`, `eval_metric="logloss"`)
+- ✅ **2.3.3** Verify model saves: `ml/models/xgboost_phishing.pkl` and `ml/models/feature_columns.json` both exist after training
+- ✅ **2.3.4** Open `ml/notebooks/03_model_evaluation.ipynb` — run all cells; verify confusion matrix, classification report (precision/recall/F1), and ROC-AUC curve render correctly
+- ✅ **2.3.5** *(Optional — only if F1 looks suspicious)* Add 5-fold `StratifiedKFold` cross-validation to `train_model.py` and log mean ± std F1
 
 **Acceptance Criteria:**
 - `python ml/scripts/train_model.py` completes without errors
@@ -147,9 +147,9 @@
 
 ### 2.4 — SHAP Explainability Wiring
 
-- [ ] **2.4.1** Open `ml/shap_analysis.py` — review the skeleton. Instantiate `shap.TreeExplainer(model)` and compute SHAP values for the test set
-- [ ] **2.4.2** Open `ml/notebooks/04_shap_analysis.ipynb` — run all cells: verify beeswarm summary plot and waterfall plot for 3 phishing examples render
-- [ ] **2.4.3** Implement `explain_prediction(url: str) -> dict` in `ml/shap_analysis.py`:
+- ✅ **2.4.1** Open `ml/shap_analysis.py` — review the skeleton. Instantiate `shap.TreeExplainer(model)` and compute SHAP values for the test set
+- ✅ **2.4.2** Open `ml/notebooks/04_shap_analysis.ipynb` — run all cells: verify beeswarm summary plot and waterfall plot for 3 phishing examples render
+- ✅ **2.4.3** Implement `explain_prediction(url: str) -> dict` in `ml/shap_analysis.py`:
   - Extract features for the URL
   - Call `model.predict_proba()` — use the phishing probability as `risk_score`
   - Compute SHAP values for just this one sample
@@ -166,7 +166,7 @@
     ```
   - `confidence_pct` = `round(score * 100)` — exposes the raw probability as a percentage
   - `human_readable` is populated by calling `format_reason()` from task 2.2.2
-- [ ] **2.4.4** Write unit test in `tests/unit/test_shap.py` — mock feature extraction, assert `confidence_pct` is an integer between 0–100, `top_reasons` has 3 items, `human_readable` strings contain no snake_case
+- ✅ **2.4.4** Write unit test in `tests/unit/test_shap.py` — mock feature extraction, assert `confidence_pct` is an integer between 0–100, `top_reasons` has 3 items, `human_readable` strings contain no snake_case
 
 **Acceptance Criteria:**
 - `explain_prediction(...)` returns `confidence_pct` as an integer
@@ -181,13 +181,13 @@
 
 ### 3.1 — Network Monitoring Module (Week 5)
 
-- [ ] **3.1.1** Open `extension/modules/network_monitor.js` — review the existing skeleton structure
-- [ ] **3.1.2** Implement tracker counting: load `shared/tracker_domains.json` (EasyPrivacy-sourced list). For every `chrome.webRequest.onCompleted` event on the current tab, check if the request hostname is in the tracker list. Count unique tracker domains per page load
-- [ ] **3.1.3** Populate `shared/tracker_domains.json` with ~500 known tracker hostnames. Source: paste the `[Adblock Plus 2.0]` domain list from `https://easylist.to/easylist/easyprivacy.txt` — extract all `||domain^` lines. Save as a JSON array of strings
-- [ ] **3.1.4** Implement mixed-content detection: flag if any `http://` resource request is made on a tab whose top-level URL starts with `https://` (compare `details.initiator` scheme vs `details.url` scheme)
-- [ ] **3.1.5** Redirect chain count comes from `chrome.webRequest.onBeforeRedirect` — count events per top-level navigation. **Do NOT re-fetch the URL in the backend** — trust the extension's count
-- [ ] **3.1.6** On tab `onUpdated` (status `complete`), freeze the `networkSignals` object: `{ tracker_count: int, has_mixed_content: bool, redirect_chain_length: int, third_party_domains: string[] }` and store in `chrome.storage.local` keyed by tab ID
-- [ ] **3.1.7** Write manual test plan in `tests/manual/network_monitor_test.md` — document expected results for: CNN.com (high tracker count), example.com (zero trackers), a PhishTank URL
+- ✅ **3.1.1** Open `extension/modules/network_monitor.js` — review the existing skeleton structure
+- ✅ **3.1.2** Implement tracker counting: load `shared/tracker_domains.json` (EasyPrivacy-sourced list). For every `chrome.webRequest.onCompleted` event on the current tab, check if the request hostname is in the tracker list. Count unique tracker domains per page load
+- ✅ **3.1.3** Populate `shared/tracker_domains.json` with ~500 known tracker hostnames. Source: paste the `[Adblock Plus 2.0]` domain list from `https://easylist.to/easylist/easyprivacy.txt` — extract all `||domain^` lines. Save as a JSON array of strings
+- ✅ **3.1.4** Implement mixed-content detection: flag if any `http://` resource request is made on a tab whose top-level URL starts with `https://` (compare `details.initiator` scheme vs `details.url` scheme)
+- ✅ **3.1.5** Redirect chain count comes from `chrome.webRequest.onBeforeRedirect` — count events per top-level navigation. **Do NOT re-fetch the URL in the backend** — trust the extension's count
+- ✅ **3.1.6** On tab `onUpdated` (status `complete`), freeze the `networkSignals` object: `{ tracker_count: int, has_mixed_content: bool, redirect_chain_length: int, third_party_domains: string[] }` and store in `chrome.storage.local` keyed by tab ID
+- ✅ **3.1.7** Write manual test plan in `tests/manual/network_monitor_test.md` — document expected results for: CNN.com (high tracker count), example.com (zero trackers), a PhishTank URL
 
 **Acceptance Criteria:**
 - Loading `https://cnn.com` → `tracker_count` ≥ 5
@@ -199,15 +199,15 @@
 
 ### 3.2 — Permissions Monitoring Module (Week 6)
 
-- [ ] **3.2.1** Open `extension/modules/permission_monitor.js` — review skeleton
-- [ ] **3.2.2** Inject via content script: detect `navigator.permissions.query` and `getUserMedia` calls using a MutationObserver on permission prompts and JS API intercepts
-- [ ] **3.2.3** Implement heuristic rules:
+- ✅ **3.2.1** Open `extension/modules/permission_monitor.js` — review skeleton
+- ✅ **3.2.2** Inject via content script: detect `navigator.permissions.query` and `getUserMedia` calls using a MutationObserver on permission prompts and JS API intercepts
+- ✅ **3.2.3** Implement heuristic rules:
   - `cam_mic_on_first_visit`: camera or mic requested before the user has scrolled or clicked (track via `document.addEventListener("scroll"/"click")` in content script)
   - `notification_prompt_on_load`: `Notification.requestPermission()` called within 3 seconds of `DOMContentLoaded`
   - `location_on_load`: `geolocation.getCurrentPosition()` called within 3 seconds of page load
-- [ ] **3.2.4** Pass rule flags from content script → background service worker via `chrome.runtime.sendMessage`
-- [ ] **3.2.5** Aggregate into `permissionSignals`: `{ permissions_requested: string[], rule_flags: string[] }` — store in `chrome.storage.local` with the `networkSignals` on tab complete
-- [ ] **3.2.6** Write manual test plan in `tests/manual/permission_monitor_test.md`
+- ✅ **3.2.4** Pass rule flags from content script → background service worker via `chrome.runtime.sendMessage`
+- ✅ **3.2.5** Aggregate into `permissionSignals`: `{ permissions_requested: string[], rule_flags: string[] }` — store in `chrome.storage.local` with the `networkSignals` on tab complete
+- ✅ **3.2.6** Write manual test plan in `tests/manual/permission_monitor_test.md`
 
 **Acceptance Criteria:**
 - `rule_flags` is correctly populated for a page that requests camera access immediately
