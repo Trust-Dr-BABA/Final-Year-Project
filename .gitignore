@@ -50,5 +50,5 @@ htmlcov/
 docker-compose.override.yml
 
 
-# ///////
+# /
 /package-lock.json
