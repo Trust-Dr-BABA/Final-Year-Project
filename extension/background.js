@@ -6,6 +6,7 @@
 
 import { analyzePage } from "./services/api_client.js";
 import "./modules/network_monitor.js";
+// import "./modules/permission_monitor.js";  // Sprint 2.6.3
 
 // ── Extension lifecycle ────────────────────────────────────────────────────
 

@@ -25,13 +25,18 @@ async function run() {
     chrome,
     console,
     URL,
-    fetch: async () => ({ json: async () => ["tracker.example"] }),
+    fetch: async () => ({ ok: true, json: async () => ["tracker.example"] }),
   });
   await new Promise(setImmediate);
 
   listeners.navigate({ tabId: 7, frameId: 0, url: "https://example.com" });
   listeners.completed({ tabId: 7, url: "https://tracker.example/pixel" });
   listeners.completed({ tabId: 7, url: "https://tracker.example/second" });
+  // Subdomains of a listed tracker must match too (EasyPrivacy ||domain^ rules)
+  // and must collapse onto the same base domain rather than counting twice.
+  listeners.completed({ tabId: 7, url: "https://ssl.tracker.example/beacon" });
+  // A domain that merely ends with the same text is not a match
+  listeners.completed({ tabId: 7, url: "https://nottracker.example/x" });
   await listeners.updated(7, { status: "complete" });
 
   assert.deepEqual(JSON.parse(JSON.stringify(stored.net_7)), {

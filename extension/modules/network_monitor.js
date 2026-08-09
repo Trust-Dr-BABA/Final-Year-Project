@@ -10,14 +10,38 @@
 
 // ── Tracker domain list (populated in Phase 3) ────────────────────────────
 let TRACKER_DOMAINS = new Set();
-fetch(chrome.runtime.getURL("tracker_domains.json"))
-  .then((response) => response.json())
-  .then((domains) => {
-    TRACKER_DOMAINS = new Set(domains);
-  })
-  .catch((error) =>
-    console.error("[ESA] Could not load tracker domains:", error),
-  );
+
+// Load the bundled EasyPrivacy list once when the service worker starts.
+(async function loadTrackerDomains() {
+  try {
+    const response = await fetch(chrome.runtime.getURL("tracker_domains.json"));
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    TRACKER_DOMAINS = new Set(await response.json());
+    console.info(`[ESA] Loaded ${TRACKER_DOMAINS.size} tracker domains.`);
+  } catch (err) {
+    console.error("[ESA] Could not load tracker domains:", err);
+  }
+})();
+
+/**
+ * Resolve a request hostname to the tracker base domain it belongs to.
+ * EasyPrivacy `||domain^` rules match subdomains too, so `ssl.google-analytics.com`
+ * must match the `google-analytics.com` entry. Walks parent domains rather than
+ * scanning the whole list, keeping this O(labels) on a per-request hot path.
+ * @param {string} hostname
+ * @returns {string|null} the matched base domain, or null if not a tracker
+ */
+function matchTrackerDomain(hostname) {
+  let candidate = hostname;
+  while (candidate) {
+    if (TRACKER_DOMAINS.has(candidate)) return candidate;
+    const dot = candidate.indexOf(".");
+    if (dot === -1) return null;
+    candidate = candidate.slice(dot + 1);
+  }
+  return null;
+}
 
 // Per-tab signal accumulators
 const tabSignals = {};
@@ -26,6 +50,7 @@ const tabSignals = {};
  * Initialize signal tracking for a new tab navigation.
  * @param {number} tabId
  */
+
 function initTabSignals(tabId) {
   tabSignals[tabId] = {
     tracker_count: 0,
@@ -73,8 +98,11 @@ chrome.webRequest.onCompleted.addListener(
       return;
     }
 
-    if (TRACKER_DOMAINS.has(requestHostname)) {
-      signals.tracker_domains_seen.add(requestHostname);
+    // Count unique tracker *base* domains, so ssl.google-analytics.com and
+    // www.google-analytics.com count once, not twice.
+    const trackerDomain = matchTrackerDomain(requestHostname);
+    if (trackerDomain) {
+      signals.tracker_domains_seen.add(trackerDomain);
       signals.tracker_count = signals.tracker_domains_seen.size;
     }
 
