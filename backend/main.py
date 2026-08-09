@@ -3,15 +3,10 @@ main.py — FastAPI application entry point.
 Registers all routers, configures CORS, and exposes the health check endpoint.
 """
 
-import logging
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from backend.routers import analyze, history
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Explainable Security Analyst API",
@@ -25,8 +20,8 @@ app = FastAPI(
 # Allow Chrome extension and local dashboard origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Tighten in production
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )

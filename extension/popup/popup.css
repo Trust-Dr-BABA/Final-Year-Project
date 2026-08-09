@@ -105,7 +105,7 @@ body {
 }
 
 /* ── Buttons ─────────────────────────────────────────────────── */
-.btn-report, .btn-retry {
+.btn-retry {
   margin-top: 4px;
   padding: 8px 20px;
   border-radius: 6px;
@@ -113,9 +113,7 @@ body {
   cursor: pointer; border: none;
   transition: opacity 0.15s;
 }
-.btn-report:hover, .btn-retry:hover { opacity: 0.85; }
-
-.btn-report { background: var(--phishing); color: #fff; }
+.btn-retry:hover { opacity: 0.85; }
 .btn-retry  { background: var(--card); color: var(--text); border: 1px solid var(--border); }
 
 /* ── Spinner ─────────────────────────────────────────────────── */

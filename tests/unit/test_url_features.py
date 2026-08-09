@@ -3,8 +3,6 @@ test_url_features.py — Unit tests for URL feature extraction.
 All VirusTotal API calls are mocked — no real network calls.
 """
 
-from unittest.mock import patch
-
 import pytest
 
 from backend.feature_extractor.url_features import extract_url_features
@@ -57,11 +55,11 @@ class TestSuspiciousTldFlag:
 class TestIpInHostname:
     def test_ip_address_detected(self):
         features = extract_url_features("http://192.168.1.1/login")
-        assert features["has_ip_in_hostname"] == 1
+        assert features["has_ip_address"] == 1
 
     def test_domain_not_flagged_as_ip(self):
         features = extract_url_features("https://google.com")
-        assert features["has_ip_in_hostname"] == 0
+        assert features["has_ip_address"] == 0
 
 
 class TestHttpsFlag:
@@ -94,7 +92,7 @@ class TestAllFeaturesPresent:
         features = extract_url_features("https://example.com")
         expected_keys = [
             "url_length", "num_digits", "num_special_chars", "subdomain_depth",
-            "has_https", "url_entropy", "has_ip_in_hostname", "suspicious_tld_flag",
+            "has_https", "url_entropy", "has_ip_address", "suspicious_tld_flag",
             "brand_impersonation", "domain_age_days", "vt_malicious_votes", "vt_harmless_votes",
         ]
         for key in expected_keys:

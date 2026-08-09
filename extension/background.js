@@ -5,12 +5,9 @@
  */
 
 import { analyzePage } from "./services/api_client.js";
+import "./modules/network_monitor.js";
 
 // ── Extension lifecycle ────────────────────────────────────────────────────
-
-chrome.runtime.onInstalled.addListener(() => {
-  console.log("[ESA] Extension installed / updated.");
-});
 
 // ── Tab navigation tracking ────────────────────────────────────────────────
 

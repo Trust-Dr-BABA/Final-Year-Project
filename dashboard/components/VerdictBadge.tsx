@@ -1,4 +1,3 @@
-import React from "react";
 import { Verdict } from "../lib/types";
 
 interface VerdictBadgeProps {
@@ -6,10 +5,10 @@ interface VerdictBadgeProps {
   className?: string;
 }
 
-export const VerdictBadge: React.FC<VerdictBadgeProps> = ({
+export function VerdictBadge({
   verdict,
   className = "",
-}) => {
+}: VerdictBadgeProps) {
   let style = "bg-green-500/15 text-green-400 border-green-500/30";
   let label = "Legitimate";
 
@@ -28,4 +27,4 @@ export const VerdictBadge: React.FC<VerdictBadgeProps> = ({
       {label}
     </span>
   );
-};
+}

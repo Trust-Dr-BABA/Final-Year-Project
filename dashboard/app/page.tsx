@@ -1,4 +1,3 @@
-import React from "react";
 import { getStats } from "../lib/api";
 import { PageWrapper } from "../components/layout/PageWrapper";
 

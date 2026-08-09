@@ -9,9 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
-COPY pyproject.toml .
+COPY backend /app/backend
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir .
+    && pip install --no-cache-dir /app/backend
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM python:3.11-slim
@@ -26,12 +26,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
-COPY . .
-
-# Copy ML model (must exist before building)
-# Mounted as read-only volume in docker-compose; copied in CI/prod builds
-# COPY ../ml/models /app/models
+# Copy only the runtime code and data shared with it.
+COPY backend /app/backend
+COPY ml /app/ml
+COPY shared /app/shared
 
 EXPOSE 8000
 

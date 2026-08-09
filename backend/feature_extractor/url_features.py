@@ -1,15 +1,14 @@
 """
 url_features.py — URL and domain feature extraction.
 All features extracted here are fed into the XGBoost classifier.
-
-Phase 2 implementation target. Skeleton is ready; implement each TODO.
 """
 
-import hashlib
+import ipaddress
 import logging
 import math
-import re
+from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import tldextract
 
@@ -37,18 +36,21 @@ def _shannon_entropy(text: str) -> float:
 
 
 def _has_ip_address(hostname: str) -> bool:
-    """Return True if hostname is an IPv4 address."""
-    pattern = r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$"
-    return bool(re.match(pattern, hostname))
+    """Return True if hostname is an IPv4 or IPv6 address."""
+    if not hostname:
+        return False
+
+    try:
+        ipaddress.ip_address(hostname)
+        return True
+    except ValueError:
+        return False
 
 
 def _load_brand_list() -> set:
     """Load brand names from shared/brand_list.txt."""
     try:
-        import os
-        brand_path = os.path.join(
-            os.path.dirname(__file__), "../../shared/brand_list.txt"
-        )
+        brand_path = Path(__file__).resolve().parents[2] / "shared" / "brand_list.txt"
         with open(brand_path) as f:
             return {line.strip().lower() for line in f if line.strip()}
     except FileNotFoundError:
@@ -77,16 +79,10 @@ def extract_url_features(url: str, vt_data: dict | None = None) -> dict[str, Any
     features: dict[str, Any] = {}
 
     # ── Parse URL ─────────────────────────────────────────────────────────────
-    try:
-        from urllib.parse import urlparse
-        parsed = urlparse(url)
-        hostname = parsed.hostname or ""
-        extracted = tldextract.extract(url)
-        tld = f".{extracted.suffix}" if extracted.suffix else ""
-    except Exception:
-        hostname = ""
-        tld = ""
-        extracted = tldextract.extract(url)
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+    extracted = tldextract.extract(hostname or url)
+    tld = f".{extracted.suffix}" if extracted.suffix else ""
 
     # ── Lexical features ──────────────────────────────────────────────────────
     features["url_length"] = len(url)
@@ -102,7 +98,7 @@ def extract_url_features(url: str, vt_data: dict | None = None) -> dict[str, Any
 
     # ── Brand impersonation ───────────────────────────────────────────────────
     # True if a known brand appears in the URL but is NOT the registrable domain
-    registrable = extracted.domain.lower()
+    registrable = extracted.domain.lower() if extracted.domain else ""
     brand_hit = any(
         brand in url.lower() and brand != registrable
         for brand in BRAND_LIST

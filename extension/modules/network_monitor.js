@@ -5,12 +5,19 @@
  * - Mixed content flag
  * - Redirect chain length
  *
- * TODO (Phase 3, Task 3.1.2): Load tracker_domains.json and implement full counting logic.
+ * Tracker rules are bundled with the extension so they are available offline.
  */
 
 // ── Tracker domain list (populated in Phase 3) ────────────────────────────
-// Will be loaded from shared/tracker_domains.json
 let TRACKER_DOMAINS = new Set();
+fetch(chrome.runtime.getURL("tracker_domains.json"))
+  .then((response) => response.json())
+  .then((domains) => {
+    TRACKER_DOMAINS = new Set(domains);
+  })
+  .catch((error) =>
+    console.error("[ESA] Could not load tracker domains:", error),
+  );
 
 // Per-tab signal accumulators
 const tabSignals = {};
@@ -38,14 +45,17 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
 });
 
 // ── Listen: redirect events ────────────────────────────────────────────────
+// Only count redirects for top-level navigations (frameId === 0).
+// Sub-frame and resource redirects are ignored to avoid inflating the count.
 
 chrome.webRequest.onBeforeRedirect.addListener(
   (details) => {
     if (details.tabId < 0) return;
+    if (details.frameId !== 0) return; // Top-level frame only
     if (!tabSignals[details.tabId]) initTabSignals(details.tabId);
     tabSignals[details.tabId].redirect_chain_length += 1;
   },
-  { urls: ["<all_urls>"] }
+  { urls: ["<all_urls>"] },
 );
 
 // ── Listen: completed requests ─────────────────────────────────────────────
@@ -56,21 +66,29 @@ chrome.webRequest.onCompleted.addListener(
     if (!tabSignals[details.tabId]) return;
 
     const signals = tabSignals[details.tabId];
-    const requestHostname = new URL(details.url).hostname;
+    let requestHostname;
+    try {
+      requestHostname = new URL(details.url).hostname;
+    } catch {
+      return;
+    }
 
-    // TODO (Task 3.1.2): Check if requestHostname is in TRACKER_DOMAINS
-    // if (TRACKER_DOMAINS.has(requestHostname)) {
-    //   signals.tracker_domains_seen.add(requestHostname);
-    //   signals.tracker_count = signals.tracker_domains_seen.size;
-    // }
+    if (TRACKER_DOMAINS.has(requestHostname)) {
+      signals.tracker_domains_seen.add(requestHostname);
+      signals.tracker_count = signals.tracker_domains_seen.size;
+    }
 
     // Mixed content detection (Task 3.1.4)
     const topUrl = signals.top_level_url;
-    if (topUrl && topUrl.startsWith("https://") && details.url.startsWith("http://")) {
+    if (
+      topUrl &&
+      topUrl.startsWith("https://") &&
+      details.url.startsWith("http://")
+    ) {
       signals.has_mixed_content = true;
     }
   },
-  { urls: ["<all_urls>"] }
+  { urls: ["<all_urls>"] },
 );
 
 // ── Listen: tab navigation complete → freeze signals ──────────────────────
@@ -89,5 +107,4 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
 
   // Store for background.js to pick up
   await chrome.storage.local.set({ [`net_${tabId}`]: networkSignals });
-  console.log(`[ESA] Network signals for tab ${tabId}:`, networkSignals);
 });

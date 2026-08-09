@@ -1,16 +1,14 @@
-import React from "react";
-
 interface ConfidenceBadgeProps {
   confidencePct: number;
   verdict?: string;
   className?: string;
 }
 
-export const ConfidenceBadge: React.FC<ConfidenceBadgeProps> = ({
+export function ConfidenceBadge({
   confidencePct,
   verdict = "phishing",
   className = "",
-}) => {
+}: ConfidenceBadgeProps) {
   let style = "bg-green-500/15 text-green-400 border-green-500/30";
 
   if (verdict === "phishing" || confidencePct >= 70) {
@@ -26,4 +24,4 @@ export const ConfidenceBadge: React.FC<ConfidenceBadgeProps> = ({
       {confidencePct}% confident
     </span>
   );
-};
+}

@@ -24,7 +24,7 @@ def _load_templates() -> dict:
 TEMPLATES: dict = _load_templates()
 
 
-def format_reason(feature_name: str, value: object, shap_impact: float) -> dict:
+def format_reason(feature_name: str, value: object, shap_impact: float) -> str:
     """
     Convert a SHAP feature name and its value into a human-readable explanation.
 
@@ -34,23 +34,31 @@ def format_reason(feature_name: str, value: object, shap_impact: float) -> dict:
         shap_impact:  The SHAP impact (positive = increases phishing probability)
 
     Returns:
-        Dict with keys:
-            "reason": Plain-English sentence safe to display in the UI.
-            "impact": Rounded SHAP impact float.
+        Plain-English sentence safe to display in the UI.
         Falls back to a generic message if no template is found.
     """
+    if feature_name == "has_https":
+        if value:
+            return "Page uses a secure HTTPS connection"
+        return "Page does not use a secure HTTPS connection"
+
+    if feature_name == "has_ip_address":
+        if value:
+            return "URL uses a raw IP address instead of a domain name"
+        return "URL uses a hostname instead of an IP address"
+
+    if feature_name == "brand_impersonation":
+        if value:
+            return "URL contains a well-known brand name in a suspicious position"
+        return "URL does not contain suspicious brand impersonation"
+
     template = TEMPLATES.get(feature_name)
 
     if not template:
         logger.debug(f"No template for feature: {feature_name}")
-        reason = f"Suspicious signal detected ({feature_name})"
-    else:
-        try:
-            reason = template.replace("{value}", str(value))
-        except Exception:
-            reason = template
+        return "Suspicious signal detected."
 
-    return {
-        "reason": reason,
-        "impact": round(float(shap_impact), 4)
-    }
+    try:
+        return template.replace("{value}", str(value))
+    except Exception:
+        return template

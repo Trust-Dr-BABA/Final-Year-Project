@@ -2,9 +2,13 @@
   "url_length",
   "num_digits",
   "num_special_chars",
-  "has_ip_address",
   "subdomain_depth",
   "has_https",
   "url_entropy",
-  "suspicious_tld_flag"
+  "has_ip_address",
+  "suspicious_tld_flag",
+  "brand_impersonation",
+  "domain_age_days",
+  "vt_malicious_votes",
+  "vt_harmless_votes"
 ]

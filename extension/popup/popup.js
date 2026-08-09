@@ -64,10 +64,6 @@ async function render() {
     setTextById("phishing-confidence", `${confidence}% confident this is phishing`);
     renderReasons("phishing-reasons", reasons);
 
-    document.getElementById("btn-view-report")?.addEventListener("click", () => {
-      chrome.tabs.create({ url: `${ESA_CONFIG.DASHBOARD_URL}/scan/${result.scan_id}` });
-    });
-
   } else if (result.verdict === "suspicious") {
     showState("state-suspicious");
     setTextById("suspicious-confidence", `${confidence}% risk score`);

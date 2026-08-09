@@ -2,28 +2,43 @@
 analyze.py — POST /analyze endpoint.
 Merges URL features, network signals, and permission signals into one
 XGBoost prediction with SHAP explanation.
-
-TODO (Phase 4): Implement full feature pipeline integration.
 """
 
-import logging
+from urllib.parse import urlparse
 
+import tldextract
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.database import get_db
+from backend.feature_extractor.url_features import extract_url_features
+from backend.models.scan import Scan
+from backend.services.heuristics_engine import evaluate
+from backend.services.virustotal_client import get_domain_info
+from ml.shap_analysis import explain_prediction
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 # ── Request / Response schemas ────────────────────────────────────────────────
 
+class NetworkSignals(BaseModel):
+    tracker_count: int = Field(default=0, ge=0)
+    has_mixed_content: bool = False
+    redirect_chain_length: int = Field(default=0, ge=0)
+    third_party_domains: list[str] = Field(default_factory=list)
+
+
+class PermissionSignals(BaseModel):
+    permissions_requested: list[str] = Field(default_factory=list)
+    rule_flags: list[str] = Field(default_factory=list)
+
+
 class AnalyzeRequest(BaseModel):
-    url: str
-    network_signals: dict | None = None
-    permission_signals: dict | None = None
+    url: HttpUrl
+    network_signals: NetworkSignals | None = None
+    permission_signals: PermissionSignals | None = None
 
 
 class ShapReason(BaseModel):
@@ -42,32 +57,63 @@ class AnalyzeResponse(BaseModel):
     flagged_rules: list[str]
 
 
-# ── Endpoint ───────────────────────────────────────────────────────────────────
+def _extract_domain(url: str) -> str:
+    parsed = urlparse(url)
+    hostname = parsed.hostname or url
+    extracted = tldextract.extract(hostname)
+    if extracted.domain and extracted.suffix:
+        return f"{extracted.domain}.{extracted.suffix}"
+    return hostname
+
 
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_url(request: AnalyzeRequest, db: AsyncSession = Depends(get_db)):
     """
     Main analysis endpoint. Accepts a URL and optional browser signals,
     returns an XGBoost verdict with SHAP explanation and confidence score.
-
-    TODO (Phase 4.2): Wire up the full ML pipeline:
-      1. extract_url_features(request.url)
-      2. heuristics_engine.evaluate(request.network_signals, request.permission_signals)
-      3. model.predict_proba(features)
-      4. shap_explainer.explain(features)
-      5. Write Scan to DB
-      6. Return AnalyzeResponse
     """
-    logger.info(f"Received analysis request for: {request.url}")
-
-    # ── STUB — replace in Phase 4 ──────────────────────────────────────────
-    import uuid
-    stub_response = AnalyzeResponse(
-        scan_id=str(uuid.uuid4()),
-        verdict="legitimate",
-        risk_score=0.05,
-        confidence_pct=5,
-        top_reasons=[],
-        flagged_rules=[],
+    url = str(request.url)
+    network_signals = (
+        request.network_signals.model_dump() if request.network_signals else None
     )
-    return stub_response
+    permission_signals = (
+        request.permission_signals.model_dump() if request.permission_signals else None
+    )
+
+    domain = _extract_domain(url)
+    vt_data = await get_domain_info(domain)
+
+    rule_flags, heuristic_features = evaluate(
+        network_signals,
+        permission_signals,
+    )
+
+    url_features = extract_url_features(url, vt_data=vt_data)
+    feature_vector = {**url_features, **heuristic_features}
+
+    analysis = explain_prediction(feature_vector)
+
+    scan = Scan(
+        url=url,
+        verdict=analysis["label"],
+        risk_score=analysis["score"],
+        confidence_pct=analysis["confidence_pct"],
+        url_features=url_features,
+        network_signals=network_signals,
+        permission_signals=permission_signals,
+        shap_values=analysis["top_reasons"],
+        flagged_rules=rule_flags,
+    )
+
+    db.add(scan)
+    await db.commit()
+    await db.refresh(scan)
+
+    return AnalyzeResponse(
+        scan_id=str(scan.id),
+        verdict=scan.verdict,
+        risk_score=scan.risk_score,
+        confidence_pct=scan.confidence_pct,
+        top_reasons=scan.shap_values or [],
+        flagged_rules=scan.flagged_rules or [],
+    )

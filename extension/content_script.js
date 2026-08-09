@@ -28,7 +28,6 @@
     permissionSignals.permissions_requested.push("notifications");
     if (elapsedMs < 3000) {
       permissionSignals.rule_flags.push("notification_prompt_on_load");
-      console.warn("[ESA] Notification permission requested within 3s of load.");
     }
     return _originalNotificationRequest(...args);
   };
@@ -42,7 +41,6 @@
       if (constraints.audio) permissionSignals.permissions_requested.push("microphone");
       if (!userHasInteracted) {
         permissionSignals.rule_flags.push("cam_mic_on_first_visit");
-        console.warn("[ESA] Camera/mic requested before user interaction.");
       }
       return _originalGetUserMedia(constraints);
     };
@@ -57,7 +55,6 @@
       permissionSignals.permissions_requested.push("geolocation");
       if (elapsedMs < 3000) {
         permissionSignals.rule_flags.push("location_on_load");
-        console.warn("[ESA] Geolocation requested within 3s of load.");
       }
       return _originalGetPosition(...args);
     };
@@ -72,9 +69,7 @@
         type: "PERMISSION_SIGNALS",
         payload: permissionSignals,
       });
-      console.log("[ESA] Content script signals sent:", permissionSignals);
     }, 3500);
   });
 
-  console.log("[ESA] Content script injected:", window.location.href);
 })();

@@ -1,34 +1,34 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:15-alpine
     container_name: fyp_postgres
     restart: unless-stopped
+    env_file:
+      - ../.env
     environment:
-      POSTGRES_USER: fyp_user
-      POSTGRES_PASSWORD: fyp_password
-      POSTGRES_DB: fyp_db
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U fyp_user -d fyp_db"]
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
       interval: 10s
       timeout: 5s
       retries: 5
 
   backend:
     build:
-      context: ../backend
-      dockerfile: Dockerfile
+      context: ..
+      dockerfile: backend/Dockerfile
     container_name: fyp_backend
     restart: unless-stopped
     env_file:
       - ../.env
     environment:
-      DATABASE_URL: postgresql+asyncpg://fyp_user:fyp_password@postgres:5432/fyp_db
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
     ports:
       - "8000:8000"
     volumes:

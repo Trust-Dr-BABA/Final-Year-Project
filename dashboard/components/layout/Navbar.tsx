@@ -1,7 +1,5 @@
 import Link from "next/link";
-import React from "react";
-
-export const Navbar: React.FC = () => {
+export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800 bg-[#0f0f1a]/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -20,12 +18,6 @@ export const Navbar: React.FC = () => {
           >
             Overview
           </Link>
-          <Link
-            href="/history"
-            className="hover:text-white transition-colors duration-150"
-          >
-            Scan History
-          </Link>
           <a
             href="http://localhost:8000/docs"
             target="_blank"
@@ -38,4 +30,4 @@ export const Navbar: React.FC = () => {
       </div>
     </header>
   );
-};
+}

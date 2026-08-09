@@ -8,16 +8,16 @@ Generates:
     ml/data/processed/features.csv
 """
 
+import sys
 from pathlib import Path
 
 import pandas as pd
-from tqdm import tqdm
 
-from ml.features.url_features import extract_url_features
+ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
-
-# Enable progress bar for pandas
-tqdm.pandas()
+from backend.feature_extractor.url_features import extract_url_features
 
 # Paths
 BASE_DIR = Path(__file__).parent.parent
@@ -41,7 +41,7 @@ def main():
     print(f"Total URLs: {len(df)}")
 
     # Extract features
-    feature_df = df["url"].progress_apply(extract_url_features)
+    feature_df = df["url"].apply(extract_url_features)
 
     # Convert dictionary column into DataFrame
     feature_df = pd.DataFrame(feature_df.tolist())
