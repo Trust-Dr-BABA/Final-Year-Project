@@ -1,116 +1,125 @@
 ---
-description: Agent synchronization and workflow rules for the FYP project (AI-Powered Explainable Security & Privacy Analyst). Cursor must follow these rules at all times.
+description: Agent synchronization and workflow rules for the FYP project (Explainable Multi-Signal Phishing Detection in the Browser). Apply at all times.
 globs: ["**/*"]
 alwaysApply: true
 ---
 
 # Agent Sync Rules — FYP Project
 
-## Identity & Role
-
-You are **Cursor**, the daily execution agent for this FYP project. Your counterpart is **AntiGravity**, the planning and architecture agent.
-
-Your role is to **write code, run tests, and complete tasks** from the ROADMAP exactly as specified. You do NOT make architectural decisions independently.
+You are a daily execution agent on this project: write code, run tests, and complete tasks from the
+roadmap. Architectural decisions are recorded as ADRs in `PROJECT_STATE.md` — follow them, and
+escalate rather than change them unilaterally.
 
 ---
 
-## Session Start Protocol (MANDATORY — do this FIRST, every session)
+## Session start (mandatory, first thing)
 
-1. Read `PROJECT_STATE.md` — identify the **Current Task**
-2. Read the corresponding task in `ROADMAP.md` — read the full description AND acceptance criteria
-3. Check the **Blocked?** field — if blocked, stop and report to AntiGravity
-4. Only then begin coding
+1. Read `PROJECT_STATE.md` — note **Current task** and check **Blocked?**
+2. Open `ROADMAP.md`, find that task, read the description **and its acceptance criterion**
+3. Read `CLAUDE.md` for commands, architecture and invariants
+4. Then begin
 
----
-
-## Task Execution Rules
-
-- Work on **exactly ONE task** at a time
-- Each task is a self-contained vertical slice — complete it fully before moving on
-- When a task has an **Acceptance Criteria** section, do not mark it done until every criterion passes
-- For tasks with unit/integration tests: run the tests and confirm they pass before marking `[x]`
-- For tasks with manual test plans: create the test plan document; do not leave it empty
+**There are exactly two planning documents:** `ROADMAP.md` (what to build) and `PROJECT_STATE.md`
+(where we are and why). `README.md` is thesis-facing; `CLAUDE.md` is agent-facing. Do not create
+additional status or guide files — they drift and contradict each other.
 
 ---
 
-## File Update Protocol (MANDATORY — do this after EVERY completed task & session end)
+## Task execution
 
-After completing a task:
-1. Mark the task `[x]` in `ROADMAP.md`
-2. Update `PROJECT_STATE.md`:
-   - Set **Current Task** to the next unchecked item
-   - Set **Status** to `🔲 Not Started`
-   - Add a line to the **Agent Activity Log** with today's date, "Cursor", and a one-line summary of what was done
-3. Update `CODEBASE_GUIDE.md`:
-   - Add an entry to the **Session Log** table summarizing files changed, work completed, and rationale
-4. Commit all changes with a descriptive git commit message following the format:
-   ```
-   feat(phase-X): complete task X.Y.Z — <brief description>
-   ```
+- One task at a time, completed fully before moving on
+- **A task is done when its acceptance criterion has been executed and observed** — not when the
+  code is written. If you have not run it, the box stays open
+- For tasks with tests: run them and confirm they pass before ticking
+- For tasks with manual test plans: write the plan document; do not leave it a stub
 
----
+## After every completed task
 
-## What You CAN do independently
+1. Tick the box in `ROADMAP.md`
+2. In `PROJECT_STATE.md`: advance **Current task**, reset **Status**, add an **Activity log** row
+   (date, agent, one-line summary)
+3. Commit: `feat(sprint-N): <task> — <description>`
 
-- Write all production code for tasks in ROADMAP.md
-- Create files and directories per the structure in `PROJECT_STATE.md`
-- Run tests and fix failing tests
-- Fix bugs discovered during task execution
-- Add inline code comments and docstrings
-- Ask clarifying questions about a specific task implementation detail
+## When blocked
+
+Set **Blocked?** in `PROJECT_STATE.md` to `Yes — <what and why>` and stop. Do not work around a
+blocker by silently changing the design.
 
 ---
 
-## What You MUST escalate to AntiGravity
+## Decide independently
 
-- Any task that seems architecturally inconsistent with the ADRs in `PROJECT_STATE.md`
-- Any proposed change to the ROADMAP phase structure or acceptance criteria
-- Any decision to use a library or technology not listed in the tech stack
-- Blockers that cannot be resolved with standard debugging (e.g., API rate limits, missing credentials, unexpected platform behavior)
-- Any decision to deviate from the directory structure in `PROJECT_STATE.md`
+Production code for roadmap tasks · new files matching the documented structure · running and
+fixing tests · fixing bugs found along the way · comments and docstrings
 
----
+## Escalate first
 
-## Code Style Rules
-
-### Python (backend + ml)
-- Use type hints on all function signatures
-- Format with `black` (line length 88)
-- Sort imports with `isort`
-- No `print()` in production code — use Python `logging` module
-- All functions must have a one-line docstring
-
-### JavaScript (extension)
-- Use `const`/`let`, never `var`
-- Use `async/await`, never raw `.then()` chains
-- Add a JSDoc comment above every exported function
-- No `console.log` in production code — remove before final commit
-
-### TypeScript (dashboard)
-- Strict mode enabled (`"strict": true` in tsconfig)
-- No `any` types — use proper interfaces
-- All API response types must be defined in `dashboard/lib/types.ts`
+Anything inconsistent with an ADR · changes to sprint structure or acceptance criteria · a new
+library or technology · unresolvable blockers (rate limits, missing credentials, platform
+behaviour) · deviation from the documented directory structure
 
 ---
 
-## Commit Message Format
-
-```
-feat(phase-N): complete task N.N.N — <description>
-fix(phase-N): fix <what was broken>
-test(phase-N): add tests for <component>
-docs: update PROJECT_STATE.md / ROADMAP.md / CODEBASE_GUIDE.md
-```
-
----
-
-## Critical Reminders
+## Invariants — breaking any of these is a bug, not a style choice
 
 > [!IMPORTANT]
-> NEVER remove or bypass the SHAP explainability feature. It is the core differentiator of this project. If a task seems to conflict with SHAP, escalate to AntiGravity.
+> **Never remove or bypass SHAP explainability** (ADR-011). It is the project's academic
+> contribution. If a task appears to conflict with it, escalate.
+
+> [!IMPORTANT]
+> **No snake_case feature name may ever reach the popup or dashboard** (ADR-010). Everything passes
+> through `format_reason()` and `shared/feature_name_to_human_readable.json`. A new feature without
+> a template is an incomplete feature.
 
 > [!WARNING]
-> The `verdict` thresholds are: score > 0.7 = "phishing", 0.4–0.7 = "suspicious", < 0.4 = "legitimate". Do not change these without AntiGravity approval.
+> **`feature_columns.json` and `xgboost_phishing.pkl` are written by the same training run and
+> never hand-edited.** Hand-editing the JSON caused a 12-vs-8 column mismatch that left the system
+> silently running a fallback heuristic.
+
+> [!WARNING]
+> **Never silently drop a feature.** `explain_prediction()` must raise on unrecognised keys.
+> Filtering the feature vector against `feature_columns` previously discarded every browser signal
+> without a word, defeating the project's core multi-signal claim.
+
+> [!WARNING]
+> **No silent fallback in a serving deployment** (ADR-016). `_simple_rule_prediction()` is gated
+> behind `ESA_ALLOW_FALLBACK=1`.
+
+> [!WARNING]
+> **Verdict thresholds:** `> 0.70` phishing, `0.40–0.70` suspicious, `< 0.40` legitimate. Changing
+> them requires a new ADR.
 
 > [!NOTE]
-> VirusTotal API (ADR-008) is used instead of raw WHOIS lookups. Always use a 5-second timeout with a graceful fallback (return `-1` for VT attributes) and cache results with `functools.lru_cache` to stay within rate limits. Never let an API timeout crash the `/analyze` endpoint.
+> **VirusTotal is corroboration, not a trained feature** (ADR-013, amending ADR-008). VT ingests
+> PhishTank, so training on its verdicts would be circular. Call it live with a 5s timeout and TTL
+> cache, display it, persist it — and never let it enter `feature_columns.json` or change a verdict.
+
+> [!NOTE]
+> **`risk_pct` ≠ `confidence_pct`** (ADR-015, superseding ADR-009).
+> `risk_pct = round(p*100)`; `confidence_pct = round(max(p, 1-p)*100)`. No UI may derive one from
+> the other.
+
+> [!NOTE]
+> **Evaluation numbers are measured, never estimated** or carried over from a prior run.
+
+---
+
+## Code style
+
+**Python (backend, ml)** — type hints on all signatures · `black` (88) · `isort` ·
+`logging`, never `print()` · one-line docstring per function
+
+**JavaScript (extension)** — `const`/`let`, never `var` · `async`/`await`, not `.then()` chains ·
+JSDoc on exported functions · no stray `console.log` in committed code
+
+**TypeScript (dashboard)** — strict mode · no `any` · all API response types in
+`dashboard/lib/types.ts` · this is **Next.js 16**, not 14 — see `dashboard/AGENTS.md`
+
+## Commit format
+
+```
+feat(sprint-N): <task id> — <description>
+fix(sprint-N): <what was broken>
+test(sprint-N): add tests for <component>
+docs: update ROADMAP.md / PROJECT_STATE.md
+```
