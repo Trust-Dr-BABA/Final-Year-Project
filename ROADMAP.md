@@ -121,21 +121,31 @@ present, both flip.
 
 ### 0.3 — Database migrations
 
-- [ ] **0.3.1** `alembic init` inside `backend/`; wire `alembic.ini` to `DATABASE_URL` from env.
-- [ ] **0.3.2** Autogenerate and apply the initial `scans` migration. The ORM model in
-      `backend/models/scan.py` is already correct — only the migration is missing.
+- [x] **0.3.1** `alembic init` inside `backend/`; wire `alembic.ini` to `DATABASE_URL` from env.
+      _Merged from `origin/main` 2026-08-09; `env.py` is async-correct._
+- [/] **0.3.2** Autogenerate and apply the initial `scans` migration.
+      Migration `ab476f0dcf44_create_scans_table` exists and matches
+      `backend/models/scan.py` exactly. **Still to verify: `alembic upgrade head` against a
+      running database.**
 
 **Acceptance:** `alembic upgrade head` applies cleanly against the compose Postgres; `\d scans`
 shows all JSONB columns.
 
 ### 0.4 — Extension loads without errors
 
-- [ ] **0.4.1** Add `"webNavigation"` to `manifest.json` permissions. Without it
+- [x] **0.4.1** Add `"webNavigation"` to `manifest.json` permissions. Without it
       `chrome.webNavigation.onBeforeNavigate` throws and **all** network signals are lost silently.
-- [ ] **0.4.2** Add real 16/48/128px PNGs to `extension/icons/` and the `icons` block to the manifest.
+      _Merged from `origin/main` 2026-08-09 — resolves defect D6._
+- [x] **0.4.2** Add real 16/48/128px PNGs to `extension/icons/` and the `icons` block to the manifest.
+      _Merged from `origin/main` 2026-08-09._
+- [x] **0.4.3** Tracker matching now follows EasyPrivacy `||domain^` semantics — subdomains of a
+      listed tracker match, and collapse onto the base domain so they count once. Covered by
+      `tests/unit/network_monitor_test.js`.
 
 **Acceptance:** extension loads via "Load unpacked" with zero manifest errors and zero service
 worker exceptions; navigating to `https://cnn.com` logs a non-zero `tracker_count`.
+**Not yet executed** — the code is in place, but this must be observed in a real browser before
+0.4 is closed.
 
 ### 0.5 — Continuous integration
 

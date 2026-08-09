@@ -14,6 +14,7 @@
 | **Deadline** | 2026-09-06 (4 weeks from 2026-08-09) |
 | **Current sprint** | Sprint 0 — Make it run, and make it fail loudly |
 | **Current task** | `0.1.1` — Add missing runtime deps to `backend/pyproject.toml` |
+| **Recently merged** | `origin/main` (13 commits) on 2026-08-09 — Alembic migration, extension icons, `webNavigation` fix |
 | **Status** | 🔲 Not started |
 | **Blocked?** | No |
 | **Last full audit** | 2026-08-09 |
@@ -71,7 +72,7 @@ Full detail and evidence in [`ROADMAP.md` §3](ROADMAP.md). Summary:
 | **D3** | VT features constant `-1` across all training rows, and would be label-circular if populated | 1 |
 | **D4** | `feature_columns.json` (12 cols) ≠ `features.csv` (8 cols); nothing asserts lockstep | 0 |
 | **D5** | Every failure path silently falls back to a heuristic verdict; Docker omits `[ml]` extras; model volume mounted to the wrong path | 0 |
-| **D6** | `manifest.json` missing `webNavigation` → all network signals silently lost | 0 |
+| ~~D6~~ | ~~`manifest.json` missing `webNavigation`~~ — **fixed**, merged from `origin/main` 2026-08-09 | ✅ |
 | **D7** | Permission interception runs in the isolated world → cannot observe the page's real calls; signal family non-functional | 2 |
 | **D8** | Permission signals arrive ~3.5s after analysis has already fired | 2 |
 
@@ -175,7 +176,9 @@ fyp/
 │   ├── database.py                      ✅ Async engine + get_db
 │   ├── Dockerfile                       ⚠️  Installs base deps only — misses [ml] extras (D5)
 │   ├── pyproject.toml                   ⚠️  Missing alembic, python-dotenv, greenlet
-│   ├── models/scan.py                   ✅ Scan ORM (no migration yet)
+│   ├── models/scan.py                   ✅ Scan ORM
+│   ├── alembic/                         ✅ Async env.py + create_scans_table migration
+│   ├── alembic.ini                      ✅ Reads DATABASE_URL from env
 │   ├── routers/
 │   │   ├── analyze.py                   ✅ POST /analyze — full pipeline
 │   │   └── history.py                   ✅ /history, /stats, /scan/{id}
@@ -187,7 +190,7 @@ fyp/
 │   └── feature_extractor/url_features.py ✅ 9 trained features + 3 VT (display only per ADR-013)
 │
 ├── extension/
-│   ├── manifest.json                    ⚠️  Missing webNavigation permission + icons (D6)
+│   ├── manifest.json                    ✅ webNavigation + icons (D6 fixed 2026-08-09)
 │   ├── background.js                    ✅ Orchestration, badge, storage
 │   ├── content_script.js                ⚠️  Isolated-world patching — non-functional (D7)
 │   ├── config.js                        ✅ Backend + dashboard URLs
@@ -197,7 +200,8 @@ fyp/
 │   │   └── permission_monitor.js        🔲 Sprint 2.6.3
 │   ├── services/api_client.js           ✅ AbortController timeout
 │   ├── popup/                           ✅ 5-state UI, dark theme
-│   └── icons/                           🔲 Sprint 0.4.2
+│   ├── README.md                        ✅ Load-unpacked setup guide
+│   └── icons/                           ✅ 16/48/128 PNGs
 │
 ├── dashboard/                           Next.js 16 + React 19 + Tailwind 4
 │   ├── app/
@@ -282,4 +286,6 @@ observed**, not when the code is written. Then: tick the box in `ROADMAP.md`, ad
 | 2026-08-02 | Cursor | Phase 2 ML: URL feature extractor, `generate_features.py`, 20k-row `features.csv`, XGBoost training, `shap_analysis.py` with `explain_prediction()`, unit tests |
 | 2026-08-02 | AntiGravity | Code review: 5 fixes (gitignore, SHAP thresholds → 0.70/0.40, formatter return type, `has_ip_address` naming, logging). Next.js dashboard initialised |
 | 2026-08-06 | Codex | Redirect counting restricted to top-level navigations (`frameId === 0`); manual network-monitor test plan |
+| 2026-08-09 | Hammad (collaborator) | Alembic setup + `create_scans_table` migration; extension icons; `webNavigation` permission; extension setup guide; tracker subdomain matching |
+| **2026-08-09** | **Claude** | **Merged `origin/main` (13 commits).** Kept: Alembic (Sprint 0.3), icons (0.4.2), `webNavigation` (fixes D6), `extension/README.md`, and tracker subdomain matching — reimplemented to walk parent domains rather than spreading the 500-entry Set per request, and to dedupe onto the base domain. Kept ours for `analyze.py` (incoming imports the removed `ml.features.url_features`, drops the VT call and `HttpUrl` validation), `ROADMAP.md` (incoming is an older copy), `shared/tracker_domains.json` (500 vs 20 entries), and the manual test plan. Dropped `extension/shared/` — a duplicate copy of the human-readable template map that would silently violate ADR-010 on drift. |
 | **2026-08-09** | **Claude** | **Full audit against the working tree; roadmap and project state rewritten.** Found 8 defects, 3 of them viva-critical: dataset separability artifact (D1), multi-signal fusion never wired into the model (D2), VT features constant and label-circular (D3). Replaced the 8-phase/12-week plan with Sprint 0 + 4 weekly sprints to 2026-09-06, ordered by grade impact. Added ADR-013 (VT as corroboration), ADR-014 (log-odds fusion), ADR-015 (risk vs confidence, superseding ADR-009), ADR-016 (fail loudly). Consolidated four contradictory planning docs into `ROADMAP.md` + `PROJECT_STATE.md`, with `README.md` (thesis-facing) and `CLAUDE.md` (agent-facing). Added evaluation rigour to the plan: leakage audit, temporal split, unseen-domain holdout, calibration, SHAP faithfulness, deep-URL false-positive set. **No code changed in this pass.** |
