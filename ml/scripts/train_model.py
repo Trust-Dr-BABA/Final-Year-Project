@@ -27,6 +27,7 @@ MODELS_DIR = Path(__file__).parent.parent / "models"
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# Train XGBoost on features.csv, evaluate on a held-out split, and save the model + column list.
 def main():
     logger.info(f"Loading features from {FEATURES_PATH}")
     df = pd.read_csv(FEATURES_PATH)

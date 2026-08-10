@@ -5,6 +5,7 @@ interface VerdictBadgeProps {
   className?: string;
 }
 
+// Colored pill labeling a scan's verdict (Phishing / Suspicious / Legitimate).
 export function VerdictBadge({
   verdict,
   className = "",

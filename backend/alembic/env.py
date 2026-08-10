@@ -47,9 +47,8 @@ config.set_main_option(
 )
 
 
+# Run migrations in offline mode (emits SQL without a live DB connection).
 def run_migrations_offline() -> None:
-    """Run migrations in offline mode."""
-
     url = config.get_main_option("sqlalchemy.url")
 
     context.configure(
@@ -63,9 +62,8 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+# Run migrations synchronously against an already-open connection.
 def do_run_migrations(connection: Connection) -> None:
-    """Run migrations using an active database connection."""
-
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -75,9 +73,8 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 
+# Run migrations in online mode using the async PostgreSQL engine.
 async def run_migrations_online() -> None:
-    """Run migrations using the async PostgreSQL engine."""
-
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

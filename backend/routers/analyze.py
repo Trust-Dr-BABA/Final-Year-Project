@@ -57,6 +57,7 @@ class AnalyzeResponse(BaseModel):
     flagged_rules: list[str]
 
 
+# Reduce a URL to its registrable domain (e.g. "sub.example.co.uk" -> "example.co.uk").
 def _extract_domain(url: str) -> str:
     parsed = urlparse(url)
     hostname = parsed.hostname or url
@@ -66,12 +67,9 @@ def _extract_domain(url: str) -> str:
     return hostname
 
 
+# Fuse URL, network, and permission signals into one XGBoost + SHAP verdict, and persist it.
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_url(request: AnalyzeRequest, db: AsyncSession = Depends(get_db)):
-    """
-    Main analysis endpoint. Accepts a URL and optional browser signals,
-    returns an XGBoost verdict with SHAP explanation and confidence score.
-    """
     url = str(request.url)
     network_signals = (
         request.network_signals.model_dump() if request.network_signals else None

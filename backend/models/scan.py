@@ -45,8 +45,8 @@ class Scan(Base):
         nullable=False,
     )
 
+    # Serialize to a plain dict for API responses.
     def to_dict(self) -> dict:
-        """Serialize to a plain dict for API responses."""
         return {
             "scan_id": str(self.id),
             "url": self.url,

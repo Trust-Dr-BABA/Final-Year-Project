@@ -14,6 +14,7 @@ from backend.models.scan import Scan
 router = APIRouter()
 
 
+# List past scans, most recent first, paginated.
 @router.get("/history", summary="List scan history")
 async def get_history(
     limit: int = Query(default=50, le=200),
@@ -30,6 +31,7 @@ async def get_history(
     return {"scans": scans, "total": int(total), "limit": limit, "offset": offset}
 
 
+# Aggregate verdict counts and average confidence across all scans.
 @router.get("/stats", summary="Aggregate scan statistics")
 async def get_stats(db: AsyncSession = Depends(get_db)):
     result = await db.execute(
@@ -49,6 +51,7 @@ async def get_stats(db: AsyncSession = Depends(get_db)):
     }
 
 
+# Fetch one scan's full detail by id, or 404 if it doesn't exist.
 @router.get("/scan/{scan_id}", summary="Get single scan detail")
 async def get_scan(scan_id: str, db: AsyncSession = Depends(get_db)):
     try:

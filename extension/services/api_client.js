@@ -5,14 +5,7 @@
 
 import ESA_CONFIG from "../config.js";
 
-/**
- * Send page signals to the backend for analysis.
- *
- * @param {string} url - The full URL of the current page
- * @param {object|null} networkSignals - Collected by network_monitor.js
- * @param {object|null} permissionSignals - Collected by content_script.js
- * @returns {Promise<object>} The AnalyzeResponse from the backend
- */
+// Send the URL plus collected network/permission signals to the backend and return its verdict.
 export async function analyzePage(url, networkSignals, permissionSignals) {
   const controller = new AbortController();
   const timeoutId = setTimeout(

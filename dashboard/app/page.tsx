@@ -3,6 +3,7 @@ import { PageWrapper } from "../components/layout/PageWrapper";
 
 export const revalidate = 0;
 
+// Server component: fetch aggregate stats and render the dashboard overview cards.
 export default async function OverviewPage() {
   const stats = await getStats();
 

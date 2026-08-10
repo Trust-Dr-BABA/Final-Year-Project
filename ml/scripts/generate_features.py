@@ -8,6 +8,7 @@ Generates:
     ml/data/processed/features.csv
 """
 
+import logging
 import sys
 from pathlib import Path
 
@@ -19,6 +20,9 @@ if str(ROOT_DIR) not in sys.path:
 
 from backend.feature_extractor.url_features import extract_url_features
 
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
+
 # Paths
 BASE_DIR = Path(__file__).parent.parent
 
@@ -26,9 +30,9 @@ DATASET_PATH = BASE_DIR / "data" / "processed" / "dataset.csv"
 FEATURES_PATH = BASE_DIR / "data" / "processed" / "features.csv"
 
 
+# Extract features for every URL in dataset.csv and write the result to features.csv.
 def main():
-
-    print(f"Loading dataset from:\n{DATASET_PATH}\n")
+    logger.info(f"Loading dataset from: {DATASET_PATH}")
 
     df = pd.read_csv(DATASET_PATH)
 
@@ -38,7 +42,7 @@ def main():
     if "label" not in df.columns:
         raise ValueError("dataset.csv must contain a 'label' column")
 
-    print(f"Total URLs: {len(df)}")
+    logger.info(f"Total URLs: {len(df)}")
 
     # Extract features
     feature_df = df["url"].apply(extract_url_features)
@@ -59,14 +63,9 @@ def main():
     # Save
     final_df.to_csv(FEATURES_PATH, index=False)
 
-    print("\nFeature extraction completed successfully.")
-    print(f"Saved to:\n{FEATURES_PATH}")
-
-    print("\nGenerated Columns:")
-    print(final_df.columns.tolist())
-
-    print("\nFirst Five Rows:")
-    print(final_df.head())
+    logger.info(f"Feature extraction completed successfully. Saved to: {FEATURES_PATH}")
+    logger.info(f"Generated columns: {final_df.columns.tolist()}")
+    logger.debug(f"First five rows:\n{final_df.head()}")
 
 
 if __name__ == "__main__":

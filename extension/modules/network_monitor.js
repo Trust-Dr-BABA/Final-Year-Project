@@ -46,11 +46,7 @@ function matchTrackerDomain(hostname) {
 // Per-tab signal accumulators
 const tabSignals = {};
 
-/**
- * Initialize signal tracking for a new tab navigation.
- * @param {number} tabId
- */
-
+// Reset the per-tab signal accumulator at the start of a new top-level navigation.
 function initTabSignals(tabId) {
   tabSignals[tabId] = {
     tracker_count: 0,
@@ -63,6 +59,7 @@ function initTabSignals(tabId) {
 
 // ── Listen: tab navigation start ──────────────────────────────────────────
 
+// Start a fresh signal accumulator whenever the top-level frame begins navigating.
 chrome.webNavigation.onBeforeNavigate.addListener((details) => {
   if (details.frameId !== 0) return; // Top-level frame only
   initTabSignals(details.tabId);
@@ -70,9 +67,7 @@ chrome.webNavigation.onBeforeNavigate.addListener((details) => {
 });
 
 // ── Listen: redirect events ────────────────────────────────────────────────
-// Only count redirects for top-level navigations (frameId === 0).
-// Sub-frame and resource redirects are ignored to avoid inflating the count.
-
+// Count only top-level redirects (frameId === 0); sub-frame redirects would inflate the count.
 chrome.webRequest.onBeforeRedirect.addListener(
   (details) => {
     if (details.tabId < 0) return;
@@ -84,7 +79,7 @@ chrome.webRequest.onBeforeRedirect.addListener(
 );
 
 // ── Listen: completed requests ─────────────────────────────────────────────
-
+// Tally tracker domains and mixed-content requests as they complete.
 chrome.webRequest.onCompleted.addListener(
   (details) => {
     if (details.tabId < 0) return;
@@ -121,6 +116,7 @@ chrome.webRequest.onCompleted.addListener(
 
 // ── Listen: tab navigation complete → freeze signals ──────────────────────
 
+// Freeze the accumulated network signals to chrome.storage.local once the tab finishes loading.
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
   if (changeInfo.status !== "complete") return;
   if (!tabSignals[tabId]) return;

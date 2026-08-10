@@ -5,6 +5,7 @@ interface PageWrapperProps {
   className?: string;
 }
 
+// Centered, max-width page container shared by every dashboard route.
 export function PageWrapper({
   children,
   className = "",

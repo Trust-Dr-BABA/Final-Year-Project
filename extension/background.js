@@ -12,9 +12,7 @@ import "./modules/network_monitor.js";
 
 // ── Tab navigation tracking ────────────────────────────────────────────────
 
-/**
- * When a tab finishes loading, collect all cached signals and fire an analysis.
- */
+// When a tab finishes loading, collect all cached signals and fire an analysis.
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status !== "complete" || !tab.url || tab.url.startsWith("chrome://")) {
     return;
@@ -72,6 +70,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 // ── Message handler (from content_script and popup) ────────────────────────
 
+// Route messages from content_script.js (permission signals) and the popup (retry requests).
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "PERMISSION_SIGNALS") {
     const tabId = sender.tab?.id;

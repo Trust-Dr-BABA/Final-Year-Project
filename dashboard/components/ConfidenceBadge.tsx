@@ -4,6 +4,7 @@ interface ConfidenceBadgeProps {
   className?: string;
 }
 
+// Colored pill showing confidence_pct, colored red/amber/green by verdict or score band.
 export function ConfidenceBadge({
   confidencePct,
   verdict = "phishing",

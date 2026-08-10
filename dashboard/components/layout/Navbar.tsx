@@ -1,4 +1,6 @@
 import Link from "next/link";
+
+// Sticky top navigation bar with the app title and links to Overview / API docs.
 export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800 bg-[#0f0f1a]/80 backdrop-blur-md">

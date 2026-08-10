@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 _TEMPLATE_PATH = Path(__file__).parent.parent.parent / "shared" / "feature_name_to_human_readable.json"
 
+# Load feature name -> human-readable template mapping from shared/.
 def _load_templates() -> dict:
-    """Load feature name → template mapping from shared/."""
     try:
         with open(_TEMPLATE_PATH) as f:
             return json.load(f)
@@ -24,19 +24,8 @@ def _load_templates() -> dict:
 TEMPLATES: dict = _load_templates()
 
 
+# Convert a SHAP feature name and value into a plain-English sentence for the UI (ADR-010).
 def format_reason(feature_name: str, value: object, shap_impact: float) -> str:
-    """
-    Convert a SHAP feature name and its value into a human-readable explanation.
-
-    Args:
-        feature_name: Snake_case feature name (e.g., "domain_age_days")
-        value:        The actual feature value
-        shap_impact:  The SHAP impact (positive = increases phishing probability)
-
-    Returns:
-        Plain-English sentence safe to display in the UI.
-        Falls back to a generic message if no template is found.
-    """
     if feature_name == "has_https":
         if value:
             return "Page uses a secure HTTPS connection"

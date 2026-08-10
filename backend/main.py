@@ -32,7 +32,7 @@ app.include_router(history.router, tags=["History"])
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
+# Returns 200 OK when the service is running.
 @app.get("/health", summary="Health check")
 async def health():
-    """Returns 200 OK when the service is running."""
     return {"status": "ok", "version": "0.1.0"}

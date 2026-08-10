@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     "AI-Powered Phishing & Privacy Risk Detection with SHAP Plain-English Explanations",
 };
 
+// App-wide HTML shell: sets the font, theme background, and renders the Navbar on every page.
 export default function RootLayout({
   children,
 }: Readonly<{

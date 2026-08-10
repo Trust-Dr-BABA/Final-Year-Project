@@ -22,8 +22,8 @@ PROCESSED_DIR = Path(__file__).parent.parent / "data" / "processed"
 PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# Load PhishTank CSV and return a DataFrame with columns: url, label=1.
 def load_phishtank(path: Path) -> pd.DataFrame:
-    """Load PhishTank CSV and return a DataFrame with columns: url, label=1."""
     logger.info(f"Loading PhishTank from {path}")
     df = pd.read_csv(path, usecols=["url"])
     df = df.dropna(subset=["url"])
@@ -32,8 +32,8 @@ def load_phishtank(path: Path) -> pd.DataFrame:
     return df
 
 
+# Load Tranco Top-1M and return sampled legitimate URLs with label=0.
 def load_tranco(path: Path, n_sample: int = 8000) -> pd.DataFrame:
-    """Load Tranco Top-1M and return sampled legitimate URLs with label=0."""
     logger.info(f"Loading Tranco from {path}")
     df = pd.read_csv(path, header=None, names=["rank", "domain"])
     df = df.dropna(subset=["domain"])
@@ -44,6 +44,7 @@ def load_tranco(path: Path, n_sample: int = 8000) -> pd.DataFrame:
     return df
 
 
+# Merge PhishTank + Tranco into one shuffled, deduplicated dataset.csv and report class balance.
 def main():
     phishtank_path = RAW_DIR / "phishtank.csv"
     tranco_path = RAW_DIR / "tranco.csv"

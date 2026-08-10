@@ -10,23 +10,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
+# Turn browser-collected network/permission signals into rule flags and numeric heuristic features.
 def evaluate(
     network_signals: dict | None,
     permission_signals: dict | None,
 ) -> tuple[list[str], dict[str, Any]]:
-    """
-    Evaluate network and permission signals against heuristic rules.
-
-    Args:
-        network_signals:   Dict from the extension: tracker_count, has_mixed_content,
-                           redirect_chain_length, third_party_domains.
-        permission_signals: Dict from the extension: permissions_requested, rule_flags.
-
-    Returns:
-        Tuple of:
-          - rule_flags: list[str]  — triggered rule identifiers (for popup display)
-          - heuristic_features: dict — numeric features to merge into XGBoost input
-    """
     rule_flags: list[str] = []
     heuristic_features: dict[str, Any] = {
         "tracker_count": 0,

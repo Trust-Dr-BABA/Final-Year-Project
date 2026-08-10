@@ -8,16 +8,19 @@ import ESA_CONFIG from "../config.js";
 
 // ── DOM helpers ────────────────────────────────────────────────────────────
 
+// Hide every popup state panel except the one matching stateId.
 function showState(stateId) {
   document.querySelectorAll(".state").forEach((el) => el.classList.add("hidden"));
   document.getElementById(stateId)?.classList.remove("hidden");
 }
 
+// Set an element's text content by id, no-op if the element isn't found.
 function setTextById(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
 }
 
+// Render the SHAP/heuristic top_reasons list as <li> items under listId.
 function renderReasons(listId, reasons) {
   const list = document.getElementById(listId);
   if (!list) return;
@@ -31,6 +34,7 @@ function renderReasons(listId, reasons) {
 
 // ── Main render ────────────────────────────────────────────────────────────
 
+// Load the current tab's cached scan result from storage and render the matching popup state.
 async function render() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) return;

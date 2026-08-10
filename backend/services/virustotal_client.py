@@ -23,6 +23,7 @@ _DEFAULT_VT_DATA: Final = {
 }
 
 
+# Call the live VirusTotal API for a domain; returns -1 defaults on any error or missing key.
 async def _fetch_domain_info(domain: str) -> dict[str, int]:
     api_key = os.getenv("VIRUSTOTAL_API_KEY")
     if not api_key:
@@ -72,6 +73,7 @@ async def _fetch_domain_info(domain: str) -> dict[str, int]:
     }
 
 
+# Return cached or freshly fetched VT domain data; display-only, never a trained feature (ADR-013).
 async def get_domain_info(domain: str) -> dict[str, int]:
     if not domain:
         return _DEFAULT_VT_DATA.copy()

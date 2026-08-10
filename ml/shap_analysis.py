@@ -43,8 +43,8 @@ except ImportError:
     shap = None  # type: ignore
 
 
+# Load the trained XGBoost model and its matching feature column list from disk.
 def _load_model():
-    """Load the trained XGBoost model and feature column list."""
     if not MODEL_PATH.exists() or not COLUMNS_PATH.exists() or not joblib or not _PANDAS_AVAILABLE:
         raise FileNotFoundError("SHAP model or required dependencies are unavailable")
 
@@ -54,8 +54,8 @@ def _load_model():
     return model, feature_columns
 
 
+# Lazily load the model once and cache a SHAP TreeExplainer for reuse across requests.
 def _get_explainer():
-    """Lazily load model and create SHAP TreeExplainer."""
     global _model, _feature_columns, _explainer
     if _explainer is None:
         if not _SHAP_AVAILABLE:
@@ -66,8 +66,8 @@ def _get_explainer():
     return _explainer, _model, _feature_columns
 
 
+# Fallback heuristic prediction when the trained model or SHAP is unavailable.
 def _simple_rule_prediction(feature_vector: dict[str, Any]) -> dict[str, Any]:
-    """Fallback heuristic prediction when the trained model or SHAP is unavailable."""
     score = 0.05
     reasons: list[dict[str, Any]] = []
     if feature_vector.get("has_ip_address", 0) == 1:
@@ -128,10 +128,8 @@ def _simple_rule_prediction(feature_vector: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# Score a feature vector with XGBoost and attribute the result via SHAP (falls back on failure).
 def explain_prediction(feature_vector: dict) -> dict:
-    """
-    Generate prediction + SHAP explanation for a single URL.
-    """
     if not MODEL_PATH.exists() or not COLUMNS_PATH.exists() or not _SHAP_AVAILABLE or not _PANDAS_AVAILABLE:
         logger.warning("SHAP model unavailable; using fallback heuristic prediction.")
         return _simple_rule_prediction(feature_vector)
@@ -175,21 +173,3 @@ def explain_prediction(feature_vector: dict) -> dict:
         "label": label,
         "top_reasons": reasons,
     }
-if __name__ == "__main__":
-
-    sample = {
-
-        "url_length": 120,
-        "num_digits": 8,
-        "num_special_chars": 14,
-        "has_ip_address": 0,
-        "subdomain_depth": 2,
-        "has_https": 0,
-        "url_entropy": 5.3,
-        "suspicious_tld_flag": 1
-
-    }
-
-    result = explain_prediction(sample)
-
-    print(result)

@@ -24,8 +24,8 @@ SUSPICIOUS_TLDS = {
 SPECIAL_CHARS = set("-_@?=%&")
 
 
+# Compute Shannon entropy of a string, a proxy for randomness in the URL.
 def _shannon_entropy(text: str) -> float:
-    """Compute Shannon entropy of a string."""
     if not text:
         return 0.0
     freq = {}
@@ -35,8 +35,8 @@ def _shannon_entropy(text: str) -> float:
     return -sum((c / length) * math.log2(c / length) for c in freq.values())
 
 
+# Return True if hostname is an IPv4 or IPv6 address rather than a domain name.
 def _has_ip_address(hostname: str) -> bool:
-    """Return True if hostname is an IPv4 or IPv6 address."""
     if not hostname:
         return False
 
@@ -47,8 +47,8 @@ def _has_ip_address(hostname: str) -> bool:
         return False
 
 
+# Load known brand names from shared/brand_list.txt for the impersonation check.
 def _load_brand_list() -> set:
-    """Load brand names from shared/brand_list.txt."""
     try:
         brand_path = Path(__file__).resolve().parents[2] / "shared" / "brand_list.txt"
         with open(brand_path) as f:
@@ -63,19 +63,8 @@ BRAND_LIST = _load_brand_list()
 
 # ── Main feature extractor ─────────────────────────────────────────────────────
 
+# Extract every lexical, brand, and VT feature from a URL for XGBoost inference.
 def extract_url_features(url: str, vt_data: dict | None = None) -> dict[str, Any]:
-    """
-    Extract all features from a URL for XGBoost inference.
-
-    Args:
-        url: The full URL string to analyse.
-        vt_data: Optional VirusTotal domain data dict with keys:
-                 domain_age_days, vt_malicious_votes, vt_harmless_votes.
-                 If None, VT features default to -1.
-
-    Returns:
-        A flat dict of feature_name -> value, ready for model inference.
-    """
     features: dict[str, Any] = {}
 
     # ── Parse URL ─────────────────────────────────────────────────────────────
@@ -115,8 +104,8 @@ def extract_url_features(url: str, vt_data: dict | None = None) -> dict[str, Any
     return features
 
 
+# Ordered feature names — must match ml/models/feature_columns.json exactly (ROADMAP 1.3.3).
 def get_feature_names() -> list[str]:
-    """Return the ordered list of feature names (must match feature_columns.json)."""
     return [
         "url_length",
         "num_digits",
