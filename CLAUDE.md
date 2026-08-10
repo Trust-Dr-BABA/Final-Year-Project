@@ -36,9 +36,11 @@ python ml/scripts/audit_dataset.py        # leakage / separability audit → ml/
 python ml/scripts/generate_features.py    # dataset.csv     → data/processed/features.csv
 python ml/scripts/train_model.py          # features.csv    → model.pkl + feature_columns.json
 
-# Dashboard
-cd dashboard && npm install && npm run dev
-npx tsc --noEmit
+# Dashboard — install from repo root (npm workspace); do not run `npm install` inside dashboard/,
+# it creates a second, independent node_modules that drifts from the root lockfile.
+npm install
+npm run dev:dashboard        # or: cd dashboard && npm run dev
+cd dashboard && npx tsc --noEmit
 
 # Database
 alembic -c backend/alembic.ini upgrade head
@@ -121,9 +123,12 @@ Breaking any of these is a bug, not a style choice.
 
 ## Code conventions
 
-**Python** — type hints on all signatures; `black` (88); `isort`; `logging`, never `print()`;
-one-line docstring per function.
-**Extension JS** — `const`/`let`; `async`/`await` over `.then()` chains; JSDoc on exported functions.
+**Every function gets exactly one single-line comment immediately above it, stating what it does.**
+No multi-paragraph docstrings, no JSDoc blocks with `@param`/`@returns` tags, no comment restating
+the function name. If the line can't say what the function does, the function is doing too much.
+
+**Python** — type hints on all signatures; `black` (88); `isort`; `logging`, never `print()`.
+**Extension JS** — `const`/`let`; `async`/`await` over `.then()` chains.
 **Dashboard TS** — strict mode; no `any`; all API response types in `dashboard/lib/types.ts`.
 
 **Commits:** `feat(sprint-N): …` · `fix(sprint-N): …` · `test(sprint-N): …` · `docs: …`

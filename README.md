@@ -224,7 +224,9 @@ python ml/scripts/generate_features.py               # dataset.csv → features.
 python ml/scripts/train_model.py                     # → model.pkl + feature_columns.json
 
 pytest tests/ -q
-cd dashboard && npm install && npm run dev
+
+npm install                  # dashboard deps, installed once from the repo root (npm workspace)
+npm run dev:dashboard        # or: cd dashboard && npm run dev
 ```
 
 ---

@@ -106,11 +106,15 @@ behaviour) · deviation from the documented directory structure
 
 ## Code style
 
+**Every function gets exactly one single-line comment immediately above it, stating what it does.**
+No multi-paragraph docstrings, no JSDoc blocks with `@param`/`@returns` tags, no comment restating
+the function name.
+
 **Python (backend, ml)** — type hints on all signatures · `black` (88) · `isort` ·
-`logging`, never `print()` · one-line docstring per function
+`logging`, never `print()`
 
 **JavaScript (extension)** — `const`/`let`, never `var` · `async`/`await`, not `.then()` chains ·
-JSDoc on exported functions · no stray `console.log` in committed code
+no stray `console.log` in committed code
 
 **TypeScript (dashboard)** — strict mode · no `any` · all API response types in
 `dashboard/lib/types.ts` · this is **Next.js 16**, not 14 — see `dashboard/AGENTS.md`

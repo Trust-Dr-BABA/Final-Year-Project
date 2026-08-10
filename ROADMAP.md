@@ -151,8 +151,14 @@ worker exceptions; navigating to `https://cnn.com` logs a non-zero `tracker_coun
 
 - [ ] **0.5.1** Add `.github/workflows/ci.yml`: `pytest`, `npx tsc --noEmit` in `dashboard/`,
       and `ruff check`. A green CI badge is a cheap, visible professionalism signal.
-- [ ] **0.5.2** Fix the root `package.json` workspace list — it declares `extension` as a
+- [x] **0.5.2** Fix the root `package.json` workspace list — it declares `extension` as a
       workspace, but `extension/` has no `package.json`.
+      _Fixed 2026-08-10: removed `extension` from `workspaces`. Root install was also silently
+      broken — `node_modules` had no hoisted deps and `dashboard/` carried its own independent
+      standalone install (two lockfiles, two copies of Next/React). Also fixed
+      `"next dev --workspace=dashboard"` in the root scripts, which passed an npm flag straight to
+      the `next` CLI and would have failed; now `"npm run dev --workspace=dashboard"`. Reinstalled
+      from a clean root `npm install` — single lockfile, single install._
 
 **Acceptance:** CI green on `main`.
 
