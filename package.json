@@ -4,13 +4,12 @@
   "private": true,
   "description": "AI-Powered Explainable Security & Privacy Analyst — monorepo root",
   "workspaces": [
-    "extension",
     "dashboard"
   ],
   "scripts": {
-    "dev:dashboard": "next dev --workspace=dashboard",
-    "build:dashboard": "next build --workspace=dashboard",
-    "lint:dashboard": "eslint --workspace=dashboard",
+    "dev:dashboard": "npm run dev --workspace=dashboard",
+    "build:dashboard": "npm run build --workspace=dashboard",
+    "lint:dashboard": "npm run lint --workspace=dashboard",
     "dev:extension": "echo \"Load unpacked extension from extension/ in chrome://extensions\"",
     "test": "node tests/unit/network_monitor_test.js"
   },
