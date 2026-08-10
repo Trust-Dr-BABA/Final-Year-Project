@@ -1,4 +1,4 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -44,7 +44,9 @@ class TestVirusTotalClient:
             }
         }
 
-        response_mock = AsyncMock()
+        # httpx.Response methods are sync — only client.get() is async — so this
+        # must be a MagicMock, not AsyncMock, or .json() returns an unawaited coroutine.
+        response_mock = MagicMock()
         response_mock.raise_for_status.return_value = None
         response_mock.json.return_value = payload
 

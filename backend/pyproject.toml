@@ -28,6 +28,7 @@ include = ["backend*"]
 
 [project.optional-dependencies]
 ml = [
+    "numpy<2",  # shap 0.45.0's compiled extensions use the NumPy 1.x C-API
     "xgboost==2.0.3",
     "shap==0.45.0",
     "pandas==2.2.2",
