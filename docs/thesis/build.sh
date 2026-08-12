@@ -22,6 +22,12 @@ else
   echo "Skipping diagram render (plantuml.jar or java unavailable); using existing PNGs."
 fi
 
+# Regenerate the Word style definitions (page breaks, table borders, 1.5 spacing).
+if [ ! -f reference.docx ] || [ make_reference.py -nt reference.docx ]; then
+  echo "Building reference.docx…"
+  python make_reference.py
+fi
+
 echo "Building thesis.docx…"
 "$PANDOC" \
   00-front-matter.md \
@@ -34,9 +40,11 @@ echo "Building thesis.docx…"
   07-references.md \
   08-appendices.md \
   --from markdown \
-  --toc --toc-depth=3 \
+  --reference-doc=reference.docx \
   --resource-path=. \
-  --highlight-style=tango \
   -o out/thesis.docx
+
+# Reinstate the properties pandoc's writer cannot represent (page breaks, keep-with-next).
+python finalise_docx.py out/thesis.docx
 
 echo "Wrote out/thesis.docx"

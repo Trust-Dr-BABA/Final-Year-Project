@@ -62,3 +62,5 @@ docs/thesis/diagrams/plantuml.jar
 
 
 # ///////
+# Generated Word style definitions — rebuild with make_reference.py
+docs/thesis/reference.docx

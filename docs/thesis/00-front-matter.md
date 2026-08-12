@@ -17,9 +17,8 @@
 | **Supervisor** | *[name]* |
 | **Submission date** | *[date]* |
 
----
 
-## Declaration
+# Declaration
 
 I declare that this report is my own work, that it has not been submitted for any other academic
 award, and that all sources of information have been acknowledged in the text and listed in the
@@ -27,9 +26,8 @@ references.
 
 Signed: ______________________  Date: ______________
 
----
 
-## Abstract
+# Abstract
 
 Phishing defences in the browser fall into two groups, and both withhold their reasoning. Blocklists
 report that a page is blocked without saying why, and are silent on any page not yet listed.
@@ -68,30 +66,20 @@ rather than estimated.
 **Keywords** — phishing detection, explainable artificial intelligence, SHAP, browser extension,
 privacy analysis, dataset leakage, model calibration
 
----
 
-## Acknowledgements
+# Acknowledgements
 
 *[Add your acknowledgements here.]*
 
----
 
-## Table of contents
+# Table of contents
 
-*[Generate from headings once converted. In Word: References → Table of Contents.]*
+```{=openxml}
+<w:p><w:r><w:fldChar w:fldCharType="begin" w:dirty="true"/></w:r><w:r><w:instrText xml:space="preserve"> TOC \o "1-3" \h \z \u </w:instrText></w:r><w:r><w:fldChar w:fldCharType="separate"/></w:r><w:r><w:t>Right-click here and choose "Update Field" to build the table of contents.</w:t></w:r><w:r><w:fldChar w:fldCharType="end"/></w:r></w:p>
+```
 
-1. Introduction
-2. System Analysis
-3. System Design
-4. Implementation
-5. Testing and Evaluation
-6. Conclusion
-   References
-   Appendices
 
----
-
-## List of figures
+# List of figures
 
 | Figure | Title | Section |
 |---|---|---|
@@ -112,7 +100,7 @@ privacy analysis, dataset leakage, model calibration
 | 3.4 | Component diagram | 3.5 |
 | 4.1 | Deployment diagram | 4.2 |
 
-## List of tables
+# List of tables
 
 | Table | Title | Section |
 |---|---|---|
@@ -133,9 +121,8 @@ privacy analysis, dataset leakage, model calibration
 | 5.22 | Defect log | 5.16 |
 | 6.1 | Objectives and outcomes | 6.2 |
 
----
 
-## Abbreviations
+# Abbreviations
 
 | Term | Expansion |
 |---|---|
@@ -163,9 +150,32 @@ privacy analysis, dataset leakage, model calibration
 | VT | VirusTotal |
 | XAI | Explainable Artificial Intelligence |
 
----
 
-## Note on the presentation of results
+# Identifier schemes
+
+Items in this report are labelled with a prefix indicating what kind of item they are. All eleven
+schemes are listed here so that any identifier encountered in the text can be resolved without
+searching for its first use.
+
+| Prefix | Meaning | Defined in | Example |
+|---|---|---|---|
+| **FR-nn** | Functional requirement | §2.2 | FR-02, tracker counting |
+| **NFR-nn** | Non-functional requirement | §2.3 | NFR-01, latency budget |
+| **UC-nn** | Use case | §2.6 | UC-01, Analyse Visited Page |
+| **CO-nn** | Operation contract | §2.9 | CO-04, `pageLoadComplete` |
+| **ADR-nnn** | Design decision record | §3.2 | ADR-014, log-odds fusion |
+| **O-n** | Project objective | §1.3 | O5, the fusion objective |
+| **C-n** | Project claim under test | §1.5 | C2, multi-signal detection |
+| **D-n** | Defect found during development | §4.7 | D1, the corpus artefact |
+| **TC-x-nn** | Test case, where *x* denotes the level | Ch. 5 | TC-U-17, unit; TC-I-05, integration; TC-S-06, system; TC-P, performance; TC-SEC, security; TC-M, maintainability |
+| **B-n** | Evaluation baseline | §5.10 | B1, blocklist lookup |
+| **⟨M-nn⟩** | Measurement not yet taken | Table 5.1 | ⟨M-07⟩, temporal-split F1 |
+
+The three that matter most when reading Chapter 5 are **C-n** (what is being claimed), **⟨M-nn⟩**
+(what has not yet been measured) and **D-n** (what went wrong and how it was found).
+
+
+# Note on the presentation of results
 
 This report distinguishes between figures that have been measured and figures that have not.
 
