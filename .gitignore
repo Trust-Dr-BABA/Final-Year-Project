@@ -50,5 +50,15 @@ htmlcov/
 # Docker overrides
 docker-compose.override.yml
 
+# Thesis build artefacts — regenerate with docs/thesis/build.sh
+docs/thesis/out/
+docs/thesis/diagrams/plantuml.jar
+
+# ...but keep the rendered diagrams: the chapter markdown embeds them, and they
+# should be readable without a local JDK. The generic `out/` rule above catches
+# them otherwise, and a directory must be re-included before its contents can be.
+!docs/thesis/diagrams/out/
+!docs/thesis/diagrams/out/*.png
+
 
 # ///////

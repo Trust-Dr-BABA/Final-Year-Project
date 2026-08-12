@@ -1,0 +1,36 @@
+@startuml fig-2-4-ssd-view-explanation
+' Figure 2.4 — System sequence diagram, UC-02 View Verdict and Explanation
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+
+actor "Web User" as User
+participant ":System" as System
+
+User -> System : openPopup(tabId)
+activate System
+System --> User : verdictState { verdict, confidencePct, topReasons }
+deactivate System
+
+alt analysis previously failed
+  User -> System : requestRetry(tabId, url)
+  activate System
+  System --> User : scanningState
+  deactivate System
+end
+
+opt user wants the full report
+  User -> System : openFullReport(scanId)
+  activate System
+  System --> User : dashboardUrl(scanId)
+  deactivate System
+end
+
+note over System
+  The popup reads a cached result rather than
+  re-issuing an analysis. No snake_case feature
+  identifier is ever rendered; every reason has
+  passed through the explanation formatter (ADR-010).
+end note
+@enduml

@@ -1,0 +1,104 @@
+@startuml fig-2-2-domain-model
+' Figure 2.2 — Domain (conceptual) model
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam classAttributeIconSize 0
+hide methods
+hide circle
+
+class WebPage {
+  url
+  visitedAt
+}
+
+class Scan {
+  scanId
+  verdict
+  riskScore
+  confidencePct
+  createdAt
+}
+
+class UrlFeatureSet {
+  urlLength
+  numDigits
+  numSpecialChars
+  subdomainDepth
+  hasHttps
+  urlEntropy
+  hasIpAddress
+  suspiciousTldFlag
+  brandImpersonation
+}
+
+class NetworkSignalSet {
+  trackerCount
+  hasMixedContent
+  redirectChainLength
+  thirdPartyDomains
+}
+
+class PermissionSignalSet {
+  permissionsRequested
+  ruleFlags
+}
+
+class DomainReputation {
+  domainAgeDays
+  maliciousVotes
+  harmlessVotes
+  retrievedAt
+}
+
+class Attribution {
+  featureName
+  featureValue
+  logOddsImpact
+  humanReadable
+}
+
+class RuleFlag {
+  name
+  description
+}
+
+class DetectionModel {
+  algorithm
+  featureColumns
+  sha256
+  trainedAt
+}
+
+class FusionWeight {
+  signalName
+  logOddsWeight
+  justification
+}
+
+class Verdict <<value>> {
+  label
+  lowerBound
+  upperBound
+}
+
+WebPage "1" -- "0..*" Scan : is assessed by >
+Scan "1" *-- "1" UrlFeatureSet : describes >
+Scan "1" *-- "0..1" NetworkSignalSet : observed >
+Scan "1" *-- "0..1" PermissionSignalSet : observed >
+Scan "1" o-- "0..1" DomainReputation : corroborated by >
+Scan "1" *-- "3..*" Attribution : explained by >
+Scan "1" *-- "0..*" RuleFlag : triggered >
+Scan "0..*" --> "1" Verdict : classified as >
+DetectionModel "1" --> "0..*" Attribution : produces >
+FusionWeight "1" --> "0..*" Attribution : produces >
+
+note right of Attribution
+  Model attributions and browser-signal
+  attributions share one representation
+  because both are additive log-odds
+  contributions (ADR-014). This is what
+  lets a single ranked list mix them.
+end note
+@enduml

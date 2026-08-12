@@ -1,0 +1,93 @@
+@startuml fig-3-2-erd-logical
+' Figure 3.2 — Logical entity-relationship model, third normal form
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam linetype ortho
+hide circle
+
+entity "SCAN" as scan {
+  * scan_id : UUID <<PK>>
+  --
+  * url : TEXT
+  * verdict : VARCHAR(20)
+  * risk_score : DOUBLE
+  * confidence_pct : INTEGER
+  * created_at : TIMESTAMPTZ
+}
+
+entity "URL_FEATURE" as uf {
+  * url_feature_id : BIGSERIAL <<PK>>
+  --
+  * scan_id : UUID <<FK>>
+  * feature_name : VARCHAR(64)
+  * feature_value : DOUBLE
+}
+
+entity "NETWORK_SIGNAL" as ns {
+  * network_signal_id : BIGSERIAL <<PK>>
+  --
+  * scan_id : UUID <<FK>>
+  * tracker_count : INTEGER
+  * has_mixed_content : BOOLEAN
+  * redirect_chain_length : INTEGER
+}
+
+entity "THIRD_PARTY_DOMAIN" as tpd {
+  * third_party_domain_id : BIGSERIAL <<PK>>
+  --
+  * network_signal_id : BIGINT <<FK>>
+  * domain : VARCHAR(255)
+}
+
+entity "PERMISSION_SIGNAL" as ps {
+  * permission_signal_id : BIGSERIAL <<PK>>
+  --
+  * scan_id : UUID <<FK>>
+  * permission_name : VARCHAR(64)
+  * requested_at_ms : INTEGER
+}
+
+entity "ATTRIBUTION" as attr {
+  * attribution_id : BIGSERIAL <<PK>>
+  --
+  * scan_id : UUID <<FK>>
+  * feature_name : VARCHAR(64)
+  * feature_value : TEXT
+  * log_odds_impact : DOUBLE
+  * human_readable : TEXT
+  * rank : SMALLINT
+}
+
+entity "RULE_FLAG" as rf {
+  * rule_flag_id : SMALLSERIAL <<PK>>
+  --
+  * name : VARCHAR(64) <<UQ>>
+  * description : TEXT
+}
+
+entity "SCAN_RULE_FLAG" as srf {
+  * scan_id : UUID <<PK,FK>>
+  * rule_flag_id : SMALLINT <<PK,FK>>
+}
+
+entity "DOMAIN_REPUTATION" as dr {
+  * domain_reputation_id : BIGSERIAL <<PK>>
+  --
+  * scan_id : UUID <<FK>>
+  * domain_age_days : INTEGER
+  * malicious_votes : INTEGER
+  * harmless_votes : INTEGER
+  * retrieved_at : TIMESTAMPTZ
+}
+
+scan ||--o{ uf
+scan ||--o| ns
+ns ||--o{ tpd
+scan ||--o{ ps
+scan ||--|{ attr
+scan ||--o{ srf
+rf ||--o{ srf
+scan ||--o| dr
+@enduml

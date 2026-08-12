@@ -1,0 +1,66 @@
+@startuml fig-4-1-deployment
+' Figure 4.1 — Deployment diagram
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+
+node "End-User Workstation" <<device>> {
+  node "Google Chrome 120+" <<execution environment>> {
+    artifact "Explainable Security Analyst\nextension (MV3, unpacked)" as EXT
+    component "Service Worker\n(V8 isolate)" as SWK
+    component "Content Script\n(isolated + MAIN world)" as CS
+    EXT -- SWK
+    EXT -- CS
+  }
+}
+
+cloud "Vercel Edge Network" <<PaaS>> {
+  node "Node.js 24 runtime" <<execution environment>> {
+    artifact "Next.js 16 dashboard\n(App Router, SSR)" as DASH
+  }
+}
+
+cloud "Railway" <<PaaS>> {
+  node "Linux container\npython:3.11-slim" <<execution environment>> {
+    artifact "backend.main:app\nuvicorn ASGI server" as API
+    artifact "xgboost_phishing.pkl" as PKL
+    artifact "feature_columns.json" as FCOL
+    API -- PKL
+    API -- FCOL
+  }
+  node "Managed PostgreSQL 15" <<database server>> {
+    database "fyp_db\n(table: scans)" as PG
+  }
+}
+
+cloud "VirusTotal" <<SaaS>> {
+  interface "api/v3/domains/{domain}" as VTAPI
+}
+
+cloud "GitHub" <<SaaS>> {
+  node "Actions runner\nubuntu-latest" <<CI>> {
+    artifact "ci.yml\n(ruff, pytest, tsc)" as CI
+  }
+}
+
+SWK ..> API : HTTPS / JSON\nPOST /analyze\n«protocol: TLS 1.3»
+SWK ..> DASH : HTTPS\nopens report tab
+DASH ..> API : HTTPS / JSON\nGET /history, /stats, /scan/{id}
+API ..> PG : TCP 5432\nasyncpg, connection pool
+API ..> VTAPI : HTTPS\n5 s timeout, 1 h TTL cache
+CI ..> API : deploy on push to main
+
+note bottom of SWK
+  Signals are gathered here and never
+  re-fetched server-side. The service
+  never issues an outbound request to
+  the page being assessed.
+end note
+
+note bottom of PG
+  Schema managed by Alembic.
+  Revision ab476f0dcf44 creates
+  the scans table.
+end note
+@enduml

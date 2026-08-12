@@ -1,0 +1,52 @@
+@startuml fig-2-7-activity-training
+' Figure 2.7 — Activity diagram, offline model training pipeline
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+
+start
+:Acquire raw corpora
+(PhishTank verified feed, path-bearing benign corpus);
+:Retain submission_time, target, verified, online;
+:Filter to verified == yes;
+:Deduplicate on registrable domain;
+:Write data/processed/dataset.csv;
+
+:Run leakage audit;
+note right
+  Reports single-feature ROC-AUC,
+  class-conditional means and
+  path-presence rate per class.
+end note
+
+if (Any single feature exceeds 0.90 AUC alone?) then (yes)
+  :Investigate the artefact;
+  :Re-source or rebalance the affected class;
+  detach
+else (no)
+endif
+
+:Extract features for every row;
+:Drop the three VirusTotal columns (ADR-013);
+:Write data/processed/features.csv;
+
+:Split temporally on submission_time;
+:Enforce disjoint registrable domains
+across train and test;
+
+:Train XGBoost classifier;
+:Write model.pkl and feature_columns.json
+in a single atomic step;
+
+if (model.n_features_in_ == len(feature_columns)?) then (no)
+  :Abort with both values reported;
+  stop
+else (yes)
+endif
+
+:Evaluate against baselines;
+:Measure calibration and explanation faithfulness;
+:Write ml/reports/evaluation_report.md;
+stop
+@enduml

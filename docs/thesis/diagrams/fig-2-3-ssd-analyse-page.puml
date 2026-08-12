@@ -1,0 +1,43 @@
+@startuml fig-2-3-ssd-analyse-page
+' Figure 2.3 — System sequence diagram, UC-01 Analyse Visited Page
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+
+actor "Browser\nNavigation Event" as Browser
+participant ":System" as System
+participant ":VirusTotal" as VT <<external>>
+
+Browser -> System : pageNavigationStarted(tabId, url)
+activate System
+System --> Browser : signalCollectionArmed
+deactivate System
+
+Browser -> System : resourceRequestCompleted(tabId, requestUrl)
+note right : Repeated once per sub-resource\nover the lifetime of the page load
+
+Browser -> System : topLevelRedirect(tabId)
+note right : Repeated per redirect hop
+
+Browser -> System : pageLoadComplete(tabId, url)
+activate System
+
+System -> VT : getDomainReputation(registrableDomain)
+activate VT
+VT --> System : reputation { ageDays, maliciousVotes, harmlessVotes }
+deactivate VT
+
+System --> Browser : analysisResult { scanId, verdict, riskPct,\nconfidencePct, topReasons, flaggedRules }
+deactivate System
+
+note over System
+  Alternative flow 4a: VirusTotal times out after 5 s.
+  The system substitutes sentinel values and proceeds;
+  the verdict is unchanged.
+
+  Alternative flow 5a: the trained model is unavailable.
+  The system returns HTTP 503 rather than a fabricated
+  verdict (ADR-016).
+end note
+@enduml

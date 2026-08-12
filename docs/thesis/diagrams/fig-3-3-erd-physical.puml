@@ -1,0 +1,49 @@
+@startuml fig-3-3-erd-physical
+' Figure 3.3 — Physical schema as implemented
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+hide circle
+
+entity "scans" as scans {
+  * id : UUID <<PK>>
+  --
+  * url : TEXT <<IX ix_scans_url>>
+  * verdict : VARCHAR(20)
+  * risk_score : DOUBLE PRECISION
+  * confidence_pct : INTEGER
+  --
+  url_features : JSONB
+  network_signals : JSONB
+  permission_signals : JSONB
+  shap_values : JSONB
+  flagged_rules : JSONB
+  --
+  * created_at : TIMESTAMPTZ
+}
+
+entity "alembic_version" as av {
+  * version_num : VARCHAR(32) <<PK>>
+}
+
+note right of scans
+  The five nullable JSONB columns collapse
+  the seven satellite entities of Figure 3.2.
+
+  Justification (ADR-007):
+  - Attribution arrays are variable length and
+    always read as a whole with their parent row;
+    no query filters on an individual attribution.
+  - The feature set changes whenever the model is
+    retrained. A normalised column-per-feature
+    schema would require a migration per retrain.
+  - PostgreSQL JSONB is indexable via GIN if a
+    query pattern later demands it, so the
+    decision is reversible.
+
+  Cost, stated plainly: referential integrity for
+  rule flags is enforced in application code rather
+  than by a foreign key.
+end note
+@enduml

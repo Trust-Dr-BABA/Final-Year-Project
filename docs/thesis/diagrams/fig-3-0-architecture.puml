@@ -1,0 +1,61 @@
+@startuml fig-3-0-architecture
+' Figure 3.0 — Layered architecture and the attribution path
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam componentStyle rectangle
+skinparam rectangle {
+  BackgroundColor<<obs>> #EAF3FF
+  BackgroundColor<<app>> #FFF3E6
+  BackgroundColor<<dom>> #EAFBEF
+  BackgroundColor<<inf>> #F2EAFB
+  BackgroundColor<<pres>> #FDEAEA
+}
+
+rectangle "Observation layer\nChrome MV3 extension" <<obs>> as L1 {
+  card "webRequest /\nwebNavigation listeners" as c1
+  card "permission API\ninterception" as c2
+  card "per-tab signal store" as c3
+}
+
+rectangle "Application layer\nFastAPI routers" <<app>> as L2 {
+  card "request validation\n(Pydantic)" as c4
+  card "orchestration\n(analyze.py)" as c5
+  card "read models\n(history.py)" as c6
+}
+
+rectangle "Domain layer\nscoring and explanation" <<dom>> as L3 {
+  card "lexical feature\nextraction" as c7
+  card "heuristic rule\nevaluation" as c8
+  card "XGBoost +\nSHAP attribution" as c9
+  card "log-odds fusion" as c10
+  card "explanation\nformatting" as c11
+}
+
+rectangle "Infrastructure layer" <<inf>> as L4 {
+  card "SQLAlchemy async ORM" as c12
+  card "VirusTotal client\n+ TTL cache" as c13
+  card "model artefact loader" as c14
+}
+
+rectangle "Presentation layer" <<pres>> as L5 {
+  card "extension popup" as c15
+  card "interstitial overlay" as c16
+  card "Next.js dashboard" as c17
+}
+
+L1 --> L2 : signed measurements
+L2 --> L3
+L3 --> L4
+L2 --> L5 : AnalyzeResponse
+L4 --> L5 : persisted scans
+
+note right of L3
+  Every quantity that reaches the user
+  originates as a named additive
+  contribution in this layer. Nothing
+  downstream invents, rescales or
+  aggregates away an attribution.
+end note
+@enduml

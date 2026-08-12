@@ -166,8 +166,14 @@ shows all JSONB columns. **Verified.**
 
 **Acceptance:** extension loads via "Load unpacked" with zero manifest errors and zero service
 worker exceptions; navigating to `https://cnn.com` logs a non-zero `tracker_count`.
-**Not yet executed** — the code is in place, but this must be observed in a real browser before
-0.4 is closed.
+**Verified 2026-08-13** in a real Chrome install: no manifest errors, no service-worker exceptions
+(the one console line logged was `explain_prediction` correctly returning 503 per ADR-016 — no
+`.pkl` is committed and `ESA_ALLOW_FALLBACK` wasn't set on the container yet — a handled error, not
+a crash). `chrome.storage.local` showed `net_785867352` (edition.cnn.com after a redirect) with
+`tracker_count: 11`, `redirect_chain_length: 5`, `third_party_domains` length 11. Set
+`ESA_ALLOW_FALLBACK: "1"` on the `backend` service in `docker/docker-compose.yml` right after —
+compose is the local dev stack, not the Sprint 3 production deploy, so ADR-016 says the fallback
+should stay on here.
 
 ### 0.5 — Continuous integration
 
@@ -393,32 +399,55 @@ and doing so is the clearest available differentiator.
 **Acceptance:** `npx tsc --noEmit` clean; every page renders against live backend data; no
 snake_case anywhere in the rendered DOM.
 
-### 3.2 — Deployment
+### 3.2 — Extension: phishing interstitial
 
-- [ ] **3.2.1** Deploy backend to Railway or Render; provision Postgres; run `alembic upgrade head`.
-- [ ] **3.2.2** Deploy dashboard to Vercel with `NEXT_PUBLIC_BACKEND_URL` set.
-- [ ] **3.2.3** Point `extension/config.js` at both live URLs; record them in `PROJECT_STATE.md`.
+Today the popup is passive — the user has to click the toolbar icon to see a verdict, which most
+people never do. Chrome's own Safe Browsing warns with a full-page interstitial; this closes that
+gap for the `phishing` tier specifically.
+
+- [ ] **3.2.1** Content script injects a full-viewport overlay (blurred backdrop + centered
+      warning card) when `background.js` receives a `verdict: "phishing"` result for the active
+      tab — **gated to `risk_score > 0.70` only**, never `suspicious`, to avoid blocking on a
+      borderline call.
+- [ ] **3.2.2** Overlay shows the top SHAP/fusion reasons (reuse `renderReasons()` from
+      `popup.js`) and two actions: **"Leave this page"** (closes the tab) and **"I understand the
+      risks, continue"** (dismisses the overlay for that tab only — never persists past
+      navigation, so a repeat visit re-warns).
+- [ ] **3.2.3** Only wire this live once Sprint 1's trained model is serving (not the heuristic
+      fallback) — shipping it against the crude 4-rule fallback risks false-positive blocks on
+      ordinary sites, which is worse than no overlay. Verify against the Sprint 1.5 acceptance
+      URLs first.
+
+**Acceptance:** visiting a known-live PhishTank URL blurs the page and shows the warning card
+within the same tick the popup would have updated; clicking "continue" reveals the underlying
+page; a fresh navigation to the same URL re-triggers the warning (no persisted bypass).
+
+### 3.3 — Deployment
+
+- [ ] **3.3.1** Deploy backend to Railway or Render; provision Postgres; run `alembic upgrade head`.
+- [ ] **3.3.2** Deploy dashboard to Vercel with `NEXT_PUBLIC_BACKEND_URL` set.
+- [ ] **3.3.3** Point `extension/config.js` at both live URLs; record them in `PROJECT_STATE.md`.
 
 **Acceptance:** live `GET /health` returns `model_loaded: true` within 3 seconds. Scan records
 persist across a redeploy.
 
-### 3.3 — End-to-end validation
+### 3.4 — End-to-end validation
 
-- [ ] **3.3.1** `tests/e2e/system_test.md` — **30 URLs**: 15 live PhishTank, 15 legitimate
+- [ ] **3.4.1** `tests/e2e/system_test.md` — **30 URLs**: 15 live PhishTank, 15 legitimate
       *including deep-path URLs* (GitHub file view, Wikipedia article, a docs page, a search
       results page). The previous plan's 10 URLs cannot support any statistical claim, and its
       legitimate examples were all bare domains — exactly the blind spot D1 created.
-- [ ] **3.3.2** Execute; record URL, expected, actual, risk %, pass/fail, and the confusion matrix.
-- [ ] **3.3.3** Fix whatever it surfaces.
+- [ ] **3.4.2** Execute; record URL, expected, actual, risk %, pass/fail, and the confusion matrix.
+- [ ] **3.4.3** Fix whatever it surfaces.
 
 **Acceptance:** ≥ 26/30 correct, **with zero false positives among the deep-path legitimate URLs**.
 That second condition is the real bar.
 
-### 3.4 — Stretch (only if 3.1–3.3 are complete)
+### 3.5 — Stretch (only if 3.1–3.4 are complete)
 
-- [ ] **3.4.1** [STRETCH] Exfiltration heuristic: POST bodies > 10KB to a non-tracker third party.
-- [ ] **3.4.2** [STRETCH] "Mark as safe" false-positive reporting → `POST /report`.
-- [ ] **3.4.3** [STRETCH] Unlisted Chrome Web Store submission.
+- [ ] **3.5.1** [STRETCH] Exfiltration heuristic: POST bodies > 10KB to a non-tracker third party.
+- [ ] **3.5.2** [STRETCH] "Mark as safe" false-positive reporting → `POST /report`.
+- [ ] **3.5.3** [STRETCH] Unlisted Chrome Web Store submission.
 
 ---
 
@@ -481,7 +510,7 @@ That second condition is the real bar.
 | **0** | Days 1–2 | Make it run, fail loudly | `/health` truthful; CI green; extension loads clean |
 | **1** | to 2026-08-16 | Rebuild the ML core (C1, C2) | Honest dataset; fusion live; deep legit URL scores < 0.40 |
 | **2** | to 2026-08-23 | Rigorous evaluation (C1, C3) | Baselines, calibration, faithfulness measured |
-| **3** | to 2026-08-30 | Complete the product | Deployed; 26/30 E2E; zero deep-URL false positives |
+| **3** | to 2026-08-30 | Complete the product | Deployed; phishing interstitial live; 26/30 E2E; zero deep-URL false positives |
 | **4** | to 2026-09-06 | Write-up and defense | Report, README, demo video, viva prep |
 
 ---
@@ -494,4 +523,4 @@ That second condition is the real bar.
 | Honest F1 drops below 0.85 | Medium | Medium | This is acceptable and expected. Report it, explain why it is more credible than the leaky 0.97, and analyse the errors. Do **not** tune against the test set |
 | VT free tier exhausted during demo | Low | Medium | 1-hour TTL cache already in place; VT is corroboration only (ADR-013), so exhaustion degrades display, never the verdict |
 | Deployment platform free tier cold-starts | Medium | Low | Warm the live endpoint before the demo; `/health` is in the pre-flight check |
-| Sprint 3 overruns | Medium | Medium | Cut §3.4 stretch, then §3.1.6, then §3.1.5. Never cut Sprints 1–2 |
+| Sprint 3 overruns | Medium | Medium | Cut §3.5 stretch, then §3.2 (interstitial — 3.4's E2E acceptance doesn't depend on it), then §3.1.6, then §3.1.5. Never cut Sprints 1–2 |

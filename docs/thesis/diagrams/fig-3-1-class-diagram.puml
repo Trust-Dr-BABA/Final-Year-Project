@@ -1,0 +1,155 @@
+@startuml fig-3-1-class-diagram
+' Figure 3.1 — Class diagram
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "Extension (Chrome MV3)" #F7F9FC {
+  class ServiceWorker <<module>> {
+    - onTabUpdated(tabId, changeInfo, tab) : void
+    - onMessage(message, sender) : boolean
+    - setBadge(verdict, tabId) : void
+  }
+  class NetworkMonitor <<module>> {
+    - TRACKER_DOMAINS : Set<string>
+    - tabSignals : Map<int, TabSignal>
+    + matchTrackerDomain(hostname) : string
+    - initTabSignals(tabId) : void
+    - freezeSignals(tabId) : Promise<void>
+  }
+  class PermissionMonitor <<module>> {
+    - observedCalls : string[]
+    + evaluateRuleFlags() : string[]
+  }
+  class ApiClient <<module>> {
+    + analyzePage(url, network, permission) : Promise<Result>
+  }
+  class Popup <<module>> {
+    + render() : Promise<void>
+    - renderReasons(containerId, reasons) : void
+    - showState(stateId) : void
+  }
+  class TabSignal <<record>> {
+    trackerCount : int
+    trackerDomainsSeen : Set<string>
+    hasMixedContent : boolean
+    redirectChainLength : int
+    topLevelUrl : string
+  }
+}
+
+package "Backend (FastAPI)" #FCF7F7 {
+  class AnalyzeRouter <<boundary>> {
+    + analyze_url(request, db) : AnalyzeResponse
+    - _extract_domain(url) : str
+  }
+  class HistoryRouter <<boundary>> {
+    + get_history(limit, offset, db) : dict
+    + get_stats(db) : dict
+    + get_scan(scan_id, db) : dict
+  }
+  class AnalyzeRequest <<schema>> {
+    url : HttpUrl
+    network_signals : NetworkSignals
+    permission_signals : PermissionSignals
+  }
+  class AnalyzeResponse <<schema>> {
+    scan_id : str
+    verdict : str
+    risk_score : float
+    confidence_pct : int
+    top_reasons : List<ShapReason>
+    flagged_rules : List<str>
+  }
+  class ShapReason <<schema>> {
+    feature : str
+    value : float|int|bool|str
+    shap_impact : float
+    human_readable : str
+  }
+  class Scan <<entity>> {
+    id : UUID
+    url : Text
+    verdict : String(20)
+    risk_score : Float
+    confidence_pct : Integer
+    url_features : JSONB
+    network_signals : JSONB
+    permission_signals : JSONB
+    shap_values : JSONB
+    flagged_rules : JSONB
+    created_at : DateTime
+    + to_dict() : dict
+  }
+  class UrlFeatureExtractor <<utility>> {
+    + extract_url_features(url, vt_data) : dict
+    + get_feature_names() : list
+    - _shannon_entropy(text) : float
+    - _has_ip_address(hostname) : bool
+    - _load_brand_list() : set
+  }
+  class HeuristicsEngine <<utility>> {
+    + evaluate(network, permission) : tuple
+  }
+  class VirusTotalClient <<utility>> {
+    - _VT_CACHE : TTLCache
+    + get_domain_info(domain) : dict
+    - _fetch_domain_info(domain) : dict
+  }
+  class ExplainerFormatter <<utility>> {
+    - TEMPLATES : dict
+    + format_reason(name, value, impact) : str
+    - _load_templates() : dict
+  }
+  class RiskFusion <<utility>> {
+    - WEIGHTS : dict
+    + fuse(p_url, signals) : tuple
+    - _logit(p) : float
+    - _sigmoid(z) : float
+  }
+}
+
+package "Machine Learning" #F7FCF7 {
+  class ShapAnalysis <<utility>> {
+    - _model, _explainer, _feature_columns
+    + explain_prediction(vector) : dict
+    + get_model_status() : dict
+    - _load_model() : tuple
+    - _get_explainer() : tuple
+  }
+  class ModelUnavailableError <<exception>> {
+  }
+  class XGBClassifier <<external>> {
+    n_features_in_ : int
+    + predict_proba(X) : ndarray
+  }
+  class TreeExplainer <<external>> {
+    + shap_values(X) : ndarray
+  }
+}
+
+AnalyzeRouter ..> AnalyzeRequest : consumes
+AnalyzeRouter ..> AnalyzeResponse : produces
+AnalyzeResponse "1" *-- "3..*" ShapReason
+AnalyzeRouter --> UrlFeatureExtractor
+AnalyzeRouter --> HeuristicsEngine
+AnalyzeRouter --> VirusTotalClient
+AnalyzeRouter --> ShapAnalysis
+AnalyzeRouter --> Scan : creates
+HistoryRouter --> Scan : queries
+ShapAnalysis --> RiskFusion
+ShapAnalysis --> ExplainerFormatter
+ShapAnalysis --> XGBClassifier
+ShapAnalysis --> TreeExplainer
+ShapAnalysis ..> ModelUnavailableError : raises
+RiskFusion --> ExplainerFormatter
+ServiceWorker --> ApiClient
+ServiceWorker --> NetworkMonitor
+ServiceWorker --> PermissionMonitor
+NetworkMonitor "1" *-- "0..*" TabSignal
+ApiClient ..> AnalyzeRouter : HTTPS
+Popup ..> ServiceWorker : chrome.runtime messaging
+@enduml

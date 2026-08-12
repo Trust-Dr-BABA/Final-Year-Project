@@ -1,0 +1,32 @@
+@startuml fig-1-1-context
+' Figure 1.1 — System context
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam componentStyle rectangle
+
+actor "Web User" as User
+actor "Researcher" as Res
+
+rectangle "Explainable Security\n& Privacy Analyst" as SYS #E8F0FE
+
+cloud "Websites visited\nby the user" as Web
+cloud "VirusTotal\nreputation service" as VT
+database "PhishTank feed +\nbenign URL corpus" as Corpus
+
+User --> SYS : opens popup,\nreads reasons,\nreviews history
+Web --> SYS : observable browser behaviour\n(requests, redirects,\npermission prompts)
+SYS --> User : verdict, risk percentage,\nranked plain-English reasons
+SYS --> VT : registrable domain
+VT --> SYS : age and vendor votes\n(corroboration only)
+Corpus --> Res : labelled URLs
+Res --> SYS : trained model artefact
+
+note bottom of Web
+  The system observes pages
+  from inside the browser.
+  It never fetches a suspect
+  URL from the server side.
+end note
+@enduml

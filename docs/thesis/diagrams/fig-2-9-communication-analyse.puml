@@ -1,0 +1,33 @@
+@startuml fig-2-9-communication-analyse
+' Figure 2.9 — Communication diagram for POST /analyze
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+
+object ":ServiceWorker" as SW
+object ":AnalyzeRouter" as Router
+object ":VirusTotalClient" as VTC
+object ":UrlFeatureExtractor" as UFE
+object ":HeuristicsEngine" as HE
+object ":ShapAnalysis" as SHAP
+object ":RiskFusion" as RF
+object ":ExplainerFormatter" as EF
+object ":ScanRepository" as Repo
+
+SW --> Router : 1: analyze(url, signals)
+Router --> VTC : 1.1: get_domain_info(domain)
+Router --> HE : 1.2: evaluate(network, permission)
+Router --> UFE : 1.3: extract_url_features(url, vt)
+Router --> SHAP : 1.4: explain_prediction(vector)
+SHAP --> RF : 1.4.1: fuse(p_url, signals)
+SHAP --> EF : 1.4.2 *[each attribution]: format_reason(name, value, impact)
+Router --> Repo : 1.5: persist(scan)
+
+note bottom of RF
+  1.4.1 returns browser-signal
+  attributions already expressed
+  in log-odds, so 1.4.2 can treat
+  them identically to SHAP values.
+end note
+@enduml

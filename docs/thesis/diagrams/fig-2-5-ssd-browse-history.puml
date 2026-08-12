@@ -1,0 +1,31 @@
+@startuml fig-2-5-ssd-browse-history
+' Figure 2.5 — System sequence diagram, UC-05 / UC-06 / UC-07 dashboard interactions
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+
+actor "Web User" as User
+participant ":System" as System
+
+User -> System : requestOverview()
+activate System
+System --> User : statistics { totalScans, phishingCount,\nsuspiciousCount, legitimateCount, avgConfidencePct }
+deactivate System
+
+User -> System : requestHistory(limit, offset)
+activate System
+System --> User : page { scans[], total, limit, offset }
+deactivate System
+
+User -> System : requestScanDetail(scanId)
+activate System
+alt scanId is a well-formed UUID and the record exists
+  System --> User : scan { url, verdict, riskScore, confidencePct,\nurlFeatures, networkSignals, permissionSignals,\nattributions, flaggedRules, createdAt }
+else scanId is malformed
+  System --> User : error 400 "Invalid scan_id"
+else no such record
+  System --> User : error 404 "Scan not found"
+end
+deactivate System
+@enduml

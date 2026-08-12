@@ -1,0 +1,60 @@
+@startuml fig-2-1-use-case
+' Figure 2.1 — System use case diagram
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+skinparam packageStyle rectangle
+left to right direction
+
+actor "Web User" as User
+actor "Researcher" as Researcher
+actor "Browser\nNavigation Event" as Browser <<system>>
+actor "VirusTotal API" as VT <<external>>
+
+rectangle "Explainable Security & Privacy Analyst" {
+  usecase "UC-01\nAnalyse Visited Page" as UC01
+  usecase "UC-02\nView Verdict and\nExplanation" as UC02
+  usecase "UC-03\nRetry Failed Analysis" as UC03
+  usecase "UC-04\nWarn User of\nPhishing Page" as UC04
+  usecase "UC-05\nBrowse Scan History" as UC05
+  usecase "UC-06\nView Detailed\nScan Report" as UC06
+  usecase "UC-07\nView Aggregate\nStatistics" as UC07
+  usecase "UC-08\nCollect Browser\nSignals" as UC08
+  usecase "UC-09\nRetrieve Domain\nReputation" as UC09
+  usecase "UC-10\nGenerate Plain-English\nExplanation" as UC10
+  usecase "UC-11\nTrain Detection Model" as UC11
+  usecase "UC-12\nAudit Dataset\nfor Leakage" as UC12
+  usecase "UC-13\nCheck System Health" as UC13
+}
+
+Browser --> UC01
+User --> UC02
+User --> UC05
+User --> UC06
+User --> UC07
+Researcher --> UC11
+Researcher --> UC12
+Researcher --> UC13
+
+UC01 ..> UC08 : <<include>>
+UC01 ..> UC09 : <<include>>
+UC01 ..> UC10 : <<include>>
+UC04 ..> UC01 : <<extend>>
+UC03 ..> UC02 : <<extend>>
+
+UC09 --> VT
+
+note bottom of UC09
+  Display only. A VirusTotal
+  failure degrades presentation
+  and never alters a verdict
+  (ADR-013).
+end note
+
+note bottom of UC11
+  Executed offline. The serving
+  system loads the artefact but
+  never trains.
+end note
+@enduml

@@ -1,0 +1,95 @@
+@startuml fig-3-4-component
+' Figure 3.4 — Component diagram
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam componentStyle rectangle
+
+package "Chrome MV3 Extension" {
+  [Service Worker] as SW
+  [Network Monitor] as NM
+  [Permission Monitor] as PM
+  [API Client] as AC
+  [Popup UI] as PU
+  [Interstitial Overlay] as IO
+
+  portin " " as p1
+  NM -( p1
+}
+
+package "Analysis Service (FastAPI)" {
+  [Analyze Router] as AR
+  [History Router] as HR
+  [URL Feature Extractor] as UFE
+  [Heuristics Engine] as HE
+  [VirusTotal Client] as VTC
+  [Risk Fusion] as RF
+  [SHAP Explainer] as SE
+  [Explanation Formatter] as EF
+  [ORM / Session Factory] as ORM
+}
+
+package "Dashboard (Next.js)" {
+  [Overview Page] as OP
+  [History Page] as HP
+  [Scan Detail Page] as SDP
+  [Typed API Client] as TAC
+  [Chart Components] as CC
+}
+
+package "Shared Assets" {
+  [tracker_domains.json] as TD
+  [brand_list.txt] as BL
+  [feature_name_to_human_readable.json] as HR2
+}
+
+database "PostgreSQL" as DB
+cloud "VirusTotal API v3" as VT
+artifact "xgboost_phishing.pkl\n+ feature_columns.json" as MODEL
+
+interface "HTTP/JSON\nPOST /analyze" as I_analyze
+interface "HTTP/JSON\nGET /history, /stats, /scan/{id}" as I_history
+interface "HTTP/JSON\nGET /health" as I_health
+
+SW --> NM
+SW --> PM
+SW --> AC
+SW --> IO
+PU ..> SW : chrome.runtime
+NM ..> TD : bundled copy
+
+AC --> I_analyze
+I_analyze - AR
+TAC --> I_history
+I_history - HR
+
+AR --> UFE
+AR --> HE
+AR --> VTC
+AR --> SE
+AR --> ORM
+SE --> RF
+SE --> EF
+SE ..> MODEL : loads read-only
+RF --> EF
+UFE ..> BL
+EF ..> HR2
+VTC --> VT
+HR --> ORM
+ORM --> DB
+
+OP --> TAC
+HP --> TAC
+SDP --> TAC
+SDP --> CC
+OP --> CC
+
+I_health - AR
+
+note right of MODEL
+  Produced offline. The service
+  loads and verifies the artefact
+  but never writes it.
+end note
+@enduml

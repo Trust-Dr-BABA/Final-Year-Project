@@ -1,0 +1,84 @@
+@startuml fig-2-8-sequence-analyse
+' Figure 2.8 — Design-level sequence diagram for POST /analyze
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 11
+skinparam maxMessageSize 220
+
+participant "background.js\n:ServiceWorker" as SW
+participant "api_client.js\n:ApiClient" as API
+participant "analyze.py\n:AnalyzeRouter" as Router
+participant ":VirusTotalClient" as VTC
+participant ":UrlFeatureExtractor" as UFE
+participant ":HeuristicsEngine" as HE
+participant ":ShapAnalysis" as SHAP
+participant ":RiskFusion" as RF
+participant ":ExplainerFormatter" as EF
+participant ":Scan" as Scan
+database "PostgreSQL" as DB
+
+SW -> API : analyzePage(url, networkSignals, permissionSignals)
+activate API
+API -> Router : POST /analyze
+activate Router
+
+Router -> Router : _extract_domain(url)
+
+Router -> VTC : get_domain_info(domain)
+activate VTC
+alt cache hit within 1 h TTL
+  VTC --> Router : cached reputation
+else cache miss
+  VTC -> VTC : _fetch_domain_info(domain)
+  VTC --> Router : reputation or sentinel -1 values
+end
+deactivate VTC
+
+Router -> HE : evaluate(networkSignals, permissionSignals)
+activate HE
+HE --> Router : (ruleFlags, heuristicFeatures)
+deactivate HE
+
+Router -> UFE : extract_url_features(url, vt_data)
+activate UFE
+UFE --> Router : urlFeatures
+deactivate UFE
+
+Router -> Router : featureVector = urlFeatures + heuristicFeatures
+
+Router -> SHAP : explain_prediction(featureVector)
+activate SHAP
+alt model artefact present
+  SHAP -> SHAP : predict_proba -> p_url
+  SHAP -> SHAP : TreeExplainer.shap_values(X)
+  SHAP -> RF : fuse(p_url, browserSignals)
+  activate RF
+  RF --> SHAP : (fusedScore, browserAttributions)
+  deactivate RF
+  loop for each attribution
+    SHAP -> EF : format_reason(name, value, impact)
+    activate EF
+    EF --> SHAP : English sentence
+    deactivate EF
+  end
+  SHAP --> Router : { score, label, top_reasons }
+else artefact missing and fallback not permitted
+  SHAP --> Router : raise ModelUnavailableError
+  Router --> API : 503 Service Unavailable
+end
+deactivate SHAP
+
+Router -> Scan : new Scan(...)
+activate Scan
+Router -> DB : add + commit + refresh
+activate DB
+DB --> Router : persisted row
+deactivate DB
+deactivate Scan
+
+Router --> API : AnalyzeResponse
+deactivate Router
+API --> SW : result
+deactivate API
+@enduml

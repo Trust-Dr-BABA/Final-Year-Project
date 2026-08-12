@@ -1,0 +1,76 @@
+@startuml fig-2-6-activity-analysis
+' Figure 2.6 — Activity diagram, end-to-end page analysis
+!theme plain
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI"
+skinparam defaultFontSize 12
+
+|Extension|
+start
+:Top-level navigation begins;
+:Reset per-tab signal accumulator;
+
+fork
+  :Count unique tracker base domains;
+fork again
+  :Detect HTTP sub-resources
+  inside an HTTPS page;
+fork again
+  :Count top-level redirect hops;
+end fork
+
+:Page load completes;
+:Freeze signals to chrome.storage.local;
+:POST /analyze with url + signals;
+
+|Backend|
+:Validate request body against schema;
+if (URL well-formed?) then (no)
+  :Return 422 Unprocessable Entity;
+  stop
+endif
+
+:Reduce URL to registrable domain;
+
+fork
+  :Query VirusTotal
+  (5 s timeout, 1 h TTL cache);
+fork again
+  :Extract 9 lexical features;
+fork again
+  :Evaluate heuristic rules
+  over browser signals;
+end fork
+
+if (Trained model available?) then (no)
+  if (ESA_ALLOW_FALLBACK set?) then (no)
+    :Return 503 Service Unavailable;
+    stop
+  else (yes)
+    :Apply development heuristic;
+  endif
+else (yes)
+  :Score feature vector with XGBoost -> p_url;
+  :Attribute p_url with SHAP TreeExplainer;
+  :Add browser-signal weights in log-odds space;
+  :Map fused log-odds back through sigmoid;
+endif
+
+:Rank all attributions by absolute impact;
+:Render each as an English sentence;
+:Assign verdict band;
+:Persist scan record;
+:Return response;
+
+|Extension|
+:Cache result and set badge;
+
+|Web User|
+if (Verdict is phishing?) then (yes)
+  :Interstitial warning shown;
+else (no)
+  :Badge updated silently;
+endif
+:Open popup to read reasons;
+stop
+@enduml

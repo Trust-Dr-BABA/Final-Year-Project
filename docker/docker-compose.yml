@@ -29,6 +29,9 @@ services:
       - ../.env
     environment:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:?POSTGRES_USER is required}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:?POSTGRES_DB is required}
+      # Compose is the local dev stack, not the Sprint 3 production deploy — ADR-016 keeps the
+      # fallback on here so /analyze is usable before a model is trained. Must stay unset in prod.
+      ESA_ALLOW_FALLBACK: "1"
     ports:
       - "8000:8000"
     volumes:
