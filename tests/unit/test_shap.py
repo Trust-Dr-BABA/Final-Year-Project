@@ -1,9 +1,18 @@
+import os
 import unittest
+from unittest.mock import patch
 
-from ml.shap_analysis import explain_prediction
+from ml.shap_analysis import ModelUnavailableError, explain_prediction
 
 
 class TestSHAP(unittest.TestCase):
+
+    # No .pkl is committed to the repo, so without the fallback flag this must raise, not fabricate a verdict.
+    def test_explain_prediction_raises_without_fallback_flag(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("ESA_ALLOW_FALLBACK", None)
+            with self.assertRaises(ModelUnavailableError):
+                explain_prediction({"url_length": 10})
 
     def test_explain_prediction(self):
 

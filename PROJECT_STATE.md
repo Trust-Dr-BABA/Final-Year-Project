@@ -13,9 +13,9 @@
 |---|---|
 | **Deadline** | 2026-09-06 (4 weeks from 2026-08-09) |
 | **Current sprint** | Sprint 0 — Make it run, and make it fail loudly |
-| **Current task** | `0.1.1` — Add missing runtime deps to `backend/pyproject.toml` |
+| **Current task** | `0.4` — load the extension in a real Chrome browser and observe zero manifest/service-worker errors (requires a human at a GUI; everything else in Sprint 0 is code-complete and verified) |
 | **Recently merged** | `origin/main` (13 commits) on 2026-08-09 — Alembic migration, extension icons, `webNavigation` fix |
-| **Status** | 🔲 Not started |
+| **Status** | 🟡 Sprint 0 nearly done — 0.1–0.3, 0.5.1 verified; 0.4 needs a real browser; CI's "green on `main`" needs a push (not yet done — uncommitted locally) |
 | **Blocked?** | No |
 | **Last full audit** | 2026-08-09 |
 
@@ -70,8 +70,8 @@ Full detail and evidence in [`ROADMAP.md` §3](ROADMAP.md). Summary:
 | **D1** | Dataset trivially separable — benign class is bare Tranco domains, phishing class is full URLs with paths | 1 |
 | **D2** | Browser-signal features silently dropped by `explain_prediction()`; multi-signal fusion not actually wired in | 1 |
 | **D3** | VT features constant `-1` across all training rows, and would be label-circular if populated | 1 |
-| **D4** | `feature_columns.json` (12 cols) ≠ `features.csv` (8 cols); nothing asserts lockstep | 0 |
-| **D5** | Every failure path silently falls back to a heuristic verdict; Docker omits `[ml]` extras; model volume mounted to the wrong path | 0 |
+| ~~D4~~ | `feature_columns.json` (12 cols) ≠ `features.csv` (8 cols); nothing asserts lockstep — **guard fixed** 2026-08-12 (`_load_model()` now raises on `n_features_in_` mismatch); the underlying 12-vs-8 disagreement itself closes with Sprint 1's retrain | 0 |
+| ~~D5~~ | Every failure path silently falls back to a heuristic verdict; Docker omits `[ml]` extras; model volume mounted to the wrong path — **fixed** 2026-08-12, verified live (see activity log) | 0 |
 | ~~D6~~ | ~~`manifest.json` missing `webNavigation`~~ — **fixed**, merged from `origin/main` 2026-08-09 | ✅ |
 | **D7** | Permission interception runs in the isolated world → cannot observe the page's real calls; signal family non-functional | 2 |
 | **D8** | Permission signals arrive ~3.5s after analysis has already fired | 2 |
@@ -167,20 +167,20 @@ placeholder reasons. A demo could run start to finish with the ML core inert and
 
 ---
 
-## Directory structure (verified 2026-08-09)
+## Directory structure (verified 2026-08-12)
 
 ```
 fyp/
 ├── backend/
-│   ├── main.py                          ✅ FastAPI app, CORS, /health
-│   ├── database.py                      ✅ Async engine + get_db
-│   ├── Dockerfile                       ⚠️  Installs base deps only — misses [ml] extras (D5)
-│   ├── pyproject.toml                   ⚠️  Missing alembic, python-dotenv, greenlet
+│   ├── main.py                          ✅ FastAPI app, CORS, /health (now reports model/db status)
+│   ├── database.py                      ✅ Async engine + get_db + check_db_reachable()
+│   ├── Dockerfile                       ✅ Installs .[ml] (D5 fixed)
+│   ├── pyproject.toml                   ✅ alembic/python-dotenv/greenlet + pandas/joblib in base deps
 │   ├── models/scan.py                   ✅ Scan ORM
 │   ├── alembic/                         ✅ Async env.py + create_scans_table migration
 │   ├── alembic.ini                      ✅ Reads DATABASE_URL from env
 │   ├── routers/
-│   │   ├── analyze.py                   ✅ POST /analyze — full pipeline
+│   │   ├── analyze.py                   ✅ POST /analyze — full pipeline, 503 on ModelUnavailableError
 │   │   └── history.py                   ✅ /history, /stats, /scan/{id}
 │   ├── services/
 │   │   ├── heuristics_engine.py         ✅ 6 rules + 6 derived features
@@ -219,7 +219,7 @@ fyp/
 │   │   ├── raw/                         ✅ phishtank.csv (10k), tranco.csv (10k), DATASET_SOURCES.md
 │   │   └── processed/                   ⚠️  dataset.csv + features.csv both carry the D1 artifact
 │   ├── models/
-│   │   ├── feature_columns.json         ⚠️  12 columns; no model to match them (D4)
+│   │   ├── feature_columns.json         ⚠️  12 columns; no model to match them (D4 guard is fixed, drift itself is Sprint 1)
 │   │   └── xgboost_phishing.pkl         🔲 Does not exist
 │   ├── scripts/
 │   │   ├── prepare_dataset.py           ⚠️  Discards PhishTank metadata; bare-domain negatives (D1)
@@ -227,7 +227,7 @@ fyp/
 │   │   ├── train_model.py               ✅ Correct; writes .pkl + columns together
 │   │   └── audit_dataset.py             🔲 Sprint 1.1.1
 │   ├── reports/                         🔲 Sprint 1–4
-│   └── shap_analysis.py                 ⚠️  Silently drops unknown features (D2); silent fallback (D5)
+│   └── shap_analysis.py                 ⚠️  Silently drops unknown features (D2, Sprint 1.4); fallback now gated behind ESA_ALLOW_FALLBACK (D5 fixed), lockstep-asserted, and exposes get_model_status()
 │
 ├── shared/
 │   ├── brand_list.txt                   ✅ 50 brands
@@ -236,14 +236,15 @@ fyp/
 │   └── feature_name_to_human_readable.json ✅ 21 templates
 │
 ├── tests/
-│   ├── conftest.py                      ✅ Env defaults
-│   ├── unit/                            ✅ 4 Python + 1 JS test module
+│   ├── conftest.py                      ✅ Env defaults + ESA_ALLOW_FALLBACK=1 for dev/test
+│   ├── unit/                            ✅ 5 Python + 1 JS test module (25 cases)
 │   ├── integration/                     ✅ test_analyze_endpoint.py
 │   ├── manual/                          ✅ network_monitor_test.md
 │   └── e2e/                             🔲 Sprint 3.3.1
 │
-├── docker/docker-compose.yml            ⚠️  Model volume mounted to wrong path (D5)
-├── .github/workflows/ci.yml             🔲 Sprint 0.5.1
+├── docker/docker-compose.yml            ✅ Model volume mount fixed → /app/ml/models (D5 fixed)
+├── .github/workflows/ci.yml             ✅ backend (ruff + pytest) + dashboard (tsc) jobs
+├── ruff.toml                            ✅ New — two targeted E402 per-file-ignores
 ├── CLAUDE.md                            ✅ Agent-facing guide
 ├── README.md                            ✅ Thesis-facing overview
 ├── ROADMAP.md                           ✅ Sprint plan
@@ -292,3 +293,4 @@ observed**, not when the code is written. Then: tick the box in `ROADMAP.md`, ad
 | 2026-08-10 | Claude | Found and fixed a NumPy 2.x/1.x ABI break (`shap==0.45.0` needs `numpy<2`, now pinned in `backend/pyproject.toml[ml]`) and a broken `AsyncMock` in `test_virustotal_client.py` that made `.json()` return an unawaited coroutine. `pytest` was 23/24 before, 24/24 after. Environment note: system Python is 3.14, too new for the pinned ML deps (no wheels); `.venv` now built against a separate Python 3.11.15 install. |
 | 2026-08-10 | Claude | Ponytail pass across `backend/`, `ml/`, `extension/`, `dashboard/`: added a one-line comment above every function per the new `CLAUDE.md` convention, removed a dead demo block in `shap_analysis.py` already covered by `test_shap.py`, and switched `generate_features.py` from `print()` to `logging` to match its sibling scripts. Left known, already-tracked defects alone (unknown-key silent drop in `explain_prediction()`, missing `ESA_ALLOW_FALLBACK` gate, `popup.js:75`'s `100 - confidence`) since each is a scoped Sprint 0–2 task, not cleanup. |
 | **2026-08-10** | **Claude** | **Fixed the root npm workspace (0.5.2).** Root `node_modules` had no hoisted deps and `dashboard/` had grown its own fully independent `npm install` — two lockfiles, two copies of Next/React, which is what looked like "two dashboards." Removed `extension` from `workspaces` (it has no `package.json`), fixed `"next dev --workspace=dashboard"` → `"npm run dev --workspace=dashboard"` (the former passed an npm flag straight to the `next` CLI and would have failed), deleted both `node_modules` trees and reinstalled once from root. Also added `*.egg-info/` to `.gitignore` — `backend/fyp_backend.egg-info/` was untracked but not ignored. Updated `CLAUDE.md`/`README.md` to install from the repo root, not `cd dashboard && npm install`. |
+| **2026-08-12** | **Claude** | **Closed out the rest of Sprint 0 (0.1, 0.2, 0.3.2, 0.5.1), each verified executed, not just written.** (1) `backend/pyproject.toml`: added `alembic`/`python-dotenv`/`greenlet`, moved `pandas`/`joblib` into base deps, wired `load_dotenv()` into `main.py` ahead of the env-reading imports. (2) `ml/shap_analysis.py`: `_load_model()` now raises on a `model.n_features_in_`/`feature_columns` mismatch (closes D4's guard); `explain_prediction()` raises `ModelUnavailableError` instead of silently falling back, unless `ESA_ALLOW_FALLBACK=1` (closes D5); added `get_model_status()` for `/health`. `backend/routers/analyze.py` maps `ModelUnavailableError` to a 503. Added `check_db_reachable()` to `database.py`. `GET /health` now returns `model_loaded`, `feature_count`, `model_sha256`, `vt_key_configured`, `db_reachable` — verified live both with and without a running Postgres. `tests/conftest.py` sets `ESA_ALLOW_FALLBACK=1` by default (no `.pkl` is committed, so the test suite needs the fallback) and a new test covers the unset/raising path. (3) `backend/Dockerfile` now installs `.[ml]`; `docker/docker-compose.yml`'s model mount fixed to `/app/ml/models`. Started Postgres + built/ran the backend image via `docker compose up -d --build` — confirmed clean startup log and `db_reachable: true` from inside the compose network (the build itself was slow only because of a ~450MB `[ml]` wheel download over a throttled connection, xgboost's wheel alone being 297MB — not a bug). (4) Ran `alembic upgrade head` against that live Postgres and confirmed via `\d scans` that every JSONB column exists, closing 0.3.2. (5) Added `.github/workflows/ci.yml` (backend: ruff + pytest; dashboard: tsc) and a new root `ruff.toml` (none existed) with two narrowly-scoped `E402` ignores for genuinely load-order-dependent imports; fixed one real unused import ruff caught in `test_url_features.py`. All three CI-equivalent checks verified green locally before wiring them in. `pytest` now 25/25. **Not yet done:** 0.4's real-browser load (needs a human at a GUI) and 0.5.1's "CI green on `main`" (needs a push, which wasn't done in this pass — changes are local only). |

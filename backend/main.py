@@ -3,10 +3,18 @@ main.py — FastAPI application entry point.
 Registers all routers, configures CORS, and exposes the health check endpoint.
 """
 
+from dotenv import load_dotenv
+
+load_dotenv()  # must run before any module-level os.getenv() in the imports below
+
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.database import check_db_reachable
 from backend.routers import analyze, history
+from ml.shap_analysis import get_model_status
 
 app = FastAPI(
     title="Explainable Security Analyst API",
@@ -32,7 +40,16 @@ app.include_router(history.router, tags=["History"])
 
 
 # ── Health check ──────────────────────────────────────────────────────────────
-# Returns 200 OK when the service is running.
+# Reports model, dependency, and database status so a demo can be verified before it starts (ADR-016).
 @app.get("/health", summary="Health check")
 async def health():
-    return {"status": "ok", "version": "0.1.0"}
+    model_status = get_model_status()
+    return {
+        "status": "ok",
+        "version": "0.1.0",
+        "model_loaded": model_status["model_loaded"],
+        "feature_count": model_status["feature_count"],
+        "model_sha256": model_status["model_sha256"],
+        "vt_key_configured": bool(os.getenv("VIRUSTOTAL_API_KEY")),
+        "db_reachable": await check_db_reachable(),
+    }

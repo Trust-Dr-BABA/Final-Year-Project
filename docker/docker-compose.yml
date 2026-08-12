@@ -32,7 +32,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../ml/models:/app/models:ro
+      - ../ml/models:/app/ml/models:ro
     depends_on:
       postgres:
         condition: service_healthy

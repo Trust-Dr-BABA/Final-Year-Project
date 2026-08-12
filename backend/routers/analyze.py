@@ -7,7 +7,7 @@ XGBoost prediction with SHAP explanation.
 from urllib.parse import urlparse
 
 import tldextract
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, HttpUrl
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,7 +16,7 @@ from backend.feature_extractor.url_features import extract_url_features
 from backend.models.scan import Scan
 from backend.services.heuristics_engine import evaluate
 from backend.services.virustotal_client import get_domain_info
-from ml.shap_analysis import explain_prediction
+from ml.shap_analysis import ModelUnavailableError, explain_prediction
 
 router = APIRouter()
 
@@ -89,7 +89,10 @@ async def analyze_url(request: AnalyzeRequest, db: AsyncSession = Depends(get_db
     url_features = extract_url_features(url, vt_data=vt_data)
     feature_vector = {**url_features, **heuristic_features}
 
-    analysis = explain_prediction(feature_vector)
+    try:
+        analysis = explain_prediction(feature_vector)
+    except ModelUnavailableError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     scan = Scan(
         url=url,

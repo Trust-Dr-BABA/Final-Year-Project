@@ -1,6 +1,6 @@
 # ROADMAP — Explainable Multi-Signal Phishing Detection in the Browser
 
-> **Last updated:** 2026-08-09
+> **Last updated:** 2026-08-12
 > **Submission deadline:** 2026-09-06 (4 weeks)
 > **Current sprint:** Sprint 0 — Make it run, and make it fail loudly
 > **Planning docs:** this file (what to build) + [`PROJECT_STATE.md`](PROJECT_STATE.md) (where we are, and why we chose it)
@@ -70,8 +70,8 @@ The previous roadmap's checkboxes had drifted from the code. This is the verifie
 | **D1** | **Dataset is trivially separable.** The legitimate class is Tranco *bare domains* (`https://hdzytech.com`); the phishing class is PhishTank *full URLs with paths*. `url_length` alone nearly separates them — the model learns "does this URL have a path", not phishing. Inflates F1 to a meaningless ~0.97 and will flag every legitimate deep link in the live demo. | `ml/scripts/prepare_dataset.py:40` | Sprint 1 |
 | **D2** | **Multi-signal fusion (claim C2) is not wired in.** Browser-signal features are computed, merged into the feature vector, then silently filtered out against `feature_columns.json`. They survive only as display strings. | `backend/routers/analyze.py:92` → `ml/shap_analysis.py:145` | Sprint 1 |
 | **D3** | **VirusTotal features are dead weight *and* would be circular.** `generate_features.py` never passes `vt_data`, so all three VT columns are constant `-1` across 20,000 training rows. Training on them properly would be worse: VirusTotal ingests PhishTank, so VT votes restate the label. | `ml/scripts/generate_features.py:44` | Sprint 1 (ADR-013) |
-| **D4** | **Artifact drift, unguarded.** `feature_columns.json` lists 12 columns; `features.csv` has 8. No `xgboost_phishing.pkl` exists. Nothing asserts the model and the column list agree. | `ml/models/` | Sprint 0 |
-| **D5** | **Every failure path returns a plausible verdict.** Missing model, missing deps, wrong mount path — all fall through to `_simple_rule_prediction()`. The Docker image never installs the `[ml]` extras, and compose mounts models to `/app/models` while the loader reads `/app/ml/models`. A demo would appear to work with the ML core inert. | `ml/shap_analysis.py:135`, `backend/Dockerfile:14`, `docker/docker-compose.yml:35` | Sprint 0 |
+| ~~D4~~ | **Artifact drift, unguarded.** `feature_columns.json` lists 12 columns; `features.csv` has 8. No `xgboost_phishing.pkl` exists. Nothing asserts the model and the column list agree. — **guard fixed 2026-08-12**: `_load_model()` now raises on `n_features_in_` mismatch. `feature_columns.json`/`features.csv` disagreement itself is still open, closed by Sprint 1's retrain. | `ml/models/` | Sprint 0 |
+| ~~D5~~ | **Every failure path returns a plausible verdict.** Missing model, missing deps, wrong mount path — all fall through to `_simple_rule_prediction()`. The Docker image never installs the `[ml]` extras, and compose mounts models to `/app/models` while the loader reads `/app/ml/models`. A demo would appear to work with the ML core inert. — **fixed 2026-08-12**: fallback gated behind `ESA_ALLOW_FALLBACK`, Dockerfile installs `.[ml]`, compose mount corrected; all verified live. | `ml/shap_analysis.py:135`, `backend/Dockerfile:14`, `docker/docker-compose.yml:35` | Sprint 0 |
 
 **Extension defects:** `manifest.json` lacks the `webNavigation` permission that
 `network_monitor.js:41` requires; `content_script.js` patches permission APIs in the isolated
@@ -90,46 +90,68 @@ confident-looking output.
 
 ### 0.1 — Reproducible environment
 
-- [ ] **0.1.1** Add the missing runtime deps to `backend/pyproject.toml`: `alembic`,
+- [x] **0.1.1** Add the missing runtime deps to `backend/pyproject.toml`: `alembic`,
       `python-dotenv`, `greenlet`. Move `pandas` and `joblib` from `[ml]` into the base
       dependencies — `ml/shap_analysis.py` imports them on the request path, so they are not
       optional in a serving container.
-- [ ] **0.1.2** Create `.venv` and install: `pip install -e "./backend[ml,dev]"`. Record the exact
+      _Done 2026-08-12: also wired `load_dotenv()` into `backend/main.py` (must run before the
+      module-level `os.getenv()` calls in `database.py`/`virustotal_client.py`) since nothing
+      previously loaded `.env` outside Docker's `env_file:`._
+- [x] **0.1.2** Create `.venv` and install: `pip install -e "./backend[ml,dev]"`. Record the exact
       commands in `README.md`.
-- [ ] **0.1.3** Fix `backend/Dockerfile:14` to install `.[ml]` rather than `.` — the image
+      _Done 2026-08-12: reinstalled into the existing Python 3.11.15 `.venv`; `pytest tests/ -q`
+      passes 25/25 (one new test added, see 0.2.1). Commands already correct in `README.md`._
+- [x] **0.1.3** Fix `backend/Dockerfile:14` to install `.[ml]` rather than `.` — the image
       currently ships without xgboost, shap or pandas.
-- [ ] **0.1.4** Fix the model volume mount in `docker/docker-compose.yml:35`: `/app/models` →
+      _Done 2026-08-12._
+- [x] **0.1.4** Fix the model volume mount in `docker/docker-compose.yml:35`: `/app/models` →
       `/app/ml/models`, matching `MODELS_DIR` in `ml/shap_analysis.py:18`.
+      _Done 2026-08-12._
 
 **Acceptance:** `pytest tests/ -q` runs to completion locally (failures allowed, collection errors
-not). `docker compose up` starts all three services with no import errors in the backend log.
+not) — **verified, 25/25 passing.** `docker compose up` starts all three services with no import
+errors in the backend log — **verified: `docker compose up -d --build backend` (postgres already
+up from 0.3.2) started cleanly, log shows only "Application startup complete", and
+`GET /health` returned `db_reachable: true` from inside the compose network.**
 
 ### 0.2 — Fail loudly, not quietly
 
-- [ ] **0.2.1** Gate the fallback in `ml/shap_analysis.py`: `explain_prediction()` raises
+- [x] **0.2.1** Gate the fallback in `ml/shap_analysis.py`: `explain_prediction()` raises
       `ModelUnavailableError` unless `ESA_ALLOW_FALLBACK=1` is set. Development keeps the
       fallback; deployment does not silently degrade.
-- [ ] **0.2.2** Add a load-time lockstep assertion: `model.n_features_in_ == len(feature_columns)`,
+      _Done 2026-08-12: `tests/conftest.py` sets `ESA_ALLOW_FALLBACK=1` by default (no `.pkl` is
+      committed, so tests need the heuristic path); new test
+      `test_explain_prediction_raises_without_fallback_flag` covers the unset case.
+      `backend/routers/analyze.py` catches `ModelUnavailableError` and returns 503._
+- [x] **0.2.2** Add a load-time lockstep assertion: `model.n_features_in_ == len(feature_columns)`,
       raising with both values on mismatch. This one check catches D4 and every future recurrence.
-- [ ] **0.2.3** Extend `GET /health` in `backend/main.py` to return
+      _Done 2026-08-12, in `_load_model()`._
+- [x] **0.2.3** Extend `GET /health` in `backend/main.py` to return
       `{status, version, model_loaded, feature_count, model_sha256, vt_key_configured, db_reachable}`.
       This becomes the pre-demo checklist on defense day.
+      _Done 2026-08-12: added `get_model_status()` (`ml/shap_analysis.py`) and
+      `check_db_reachable()` (`backend/database.py`), both non-raising. Verified live: with no
+      `.pkl` and no DB running, returned `model_loaded: false, db_reachable: false`; with Postgres
+      up, `db_reachable` flipped to `true`._
 
 **Acceptance:** with no `.pkl` present and `ESA_ALLOW_FALLBACK` unset, `POST /analyze` returns
-**503**, not a fabricated verdict. `GET /health` reports `model_loaded: false`. With the model
-present, both flip.
+**503**, not a fabricated verdict — **verified via unit test.** `GET /health` reports
+`model_loaded: false` — **verified live, see above.** With the model present, both flip
+(**not yet observed — no `.pkl` exists until Sprint 1.5 trains one**).
 
 ### 0.3 — Database migrations
 
 - [x] **0.3.1** `alembic init` inside `backend/`; wire `alembic.ini` to `DATABASE_URL` from env.
       _Merged from `origin/main` 2026-08-09; `env.py` is async-correct._
-- [/] **0.3.2** Autogenerate and apply the initial `scans` migration.
+- [x] **0.3.2** Autogenerate and apply the initial `scans` migration.
       Migration `ab476f0dcf44_create_scans_table` exists and matches
-      `backend/models/scan.py` exactly. **Still to verify: `alembic upgrade head` against a
-      running database.**
+      `backend/models/scan.py` exactly.
+      _Verified 2026-08-12: started Postgres via `docker compose up -d postgres`, ran
+      `alembic upgrade head` against it — applied cleanly, `\d scans` confirmed all JSONB columns
+      (`url_features`, `network_signals`, `permission_signals`, `shap_values`, `flagged_rules`)._
 
 **Acceptance:** `alembic upgrade head` applies cleanly against the compose Postgres; `\d scans`
-shows all JSONB columns.
+shows all JSONB columns. **Verified.**
 
 ### 0.4 — Extension loads without errors
 
@@ -149,8 +171,13 @@ worker exceptions; navigating to `https://cnn.com` logs a non-zero `tracker_coun
 
 ### 0.5 — Continuous integration
 
-- [ ] **0.5.1** Add `.github/workflows/ci.yml`: `pytest`, `npx tsc --noEmit` in `dashboard/`,
+- [x] **0.5.1** Add `.github/workflows/ci.yml`: `pytest`, `npx tsc --noEmit` in `dashboard/`,
       and `ruff check`. A green CI badge is a cheap, visible professionalism signal.
+      _Done 2026-08-12: two jobs (`backend`, `dashboard`). Added root `ruff.toml` (no prior config
+      existed) with two targeted `E402` per-file-ignores for genuinely load-order-dependent imports
+      (`backend/main.py`'s `load_dotenv()`, `ml/scripts/generate_features.py`'s `sys.path` patch);
+      fixed one real unused import in `test_url_features.py`. `ruff check backend ml tests`,
+      `pytest`, and `dashboard`'s `npx tsc --noEmit` all verified green locally before wiring in._
 - [x] **0.5.2** Fix the root `package.json` workspace list — it declares `extension` as a
       workspace, but `extension/` has no `package.json`.
       _Fixed 2026-08-10: removed `extension` from `workspaces`. Root install was also silently

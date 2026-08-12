@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Install Python dependencies
 COPY backend /app/backend
 RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir /app/backend
+    && pip install --no-cache-dir "/app/backend[ml]"
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM python:3.11-slim

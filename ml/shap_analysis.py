@@ -6,8 +6,10 @@ If the model artifact or SHAP dependencies are unavailable, falls back to a
 simple heuristic prediction so the backend remains operational.
 """
 
+import hashlib
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +20,11 @@ logger = logging.getLogger(__name__)
 MODELS_DIR = Path(__file__).parent / "models"
 MODEL_PATH = MODELS_DIR / "xgboost_phishing.pkl"
 COLUMNS_PATH = MODELS_DIR / "feature_columns.json"
+
+
+# Raised when the trained model can't be served and ESA_ALLOW_FALLBACK isn't set (ADR-016).
+class ModelUnavailableError(RuntimeError):
+    pass
 
 _model = None
 _feature_columns = None
@@ -51,6 +58,14 @@ def _load_model():
     model = joblib.load(MODEL_PATH)
     with open(COLUMNS_PATH) as f:
         feature_columns = json.load(f)
+
+    if model.n_features_in_ != len(feature_columns):
+        raise ValueError(
+            f"Model/feature_columns drift: model.n_features_in_={model.n_features_in_} "
+            f"!= len(feature_columns)={len(feature_columns)}. "
+            "The .pkl and feature_columns.json must come from the same training run."
+        )
+
     return model, feature_columns
 
 
@@ -128,15 +143,36 @@ def _simple_rule_prediction(feature_vector: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-# Score a feature vector with XGBoost and attribute the result via SHAP (falls back on failure).
+# Report model load status for GET /health; never raises, unlike explain_prediction().
+def get_model_status() -> dict[str, Any]:
+    try:
+        _, _, feature_columns = _get_explainer()
+    except Exception:
+        return {"model_loaded": False, "feature_count": 0, "model_sha256": None}
+    return {
+        "model_loaded": True,
+        "feature_count": len(feature_columns),
+        "model_sha256": hashlib.sha256(MODEL_PATH.read_bytes()).hexdigest(),
+    }
+
+
+# Score a feature vector with XGBoost and attribute the result via SHAP.
+# Raises ModelUnavailableError unless ESA_ALLOW_FALLBACK=1 (ADR-016) — a serving deployment
+# must never silently degrade to the heuristic fallback.
 def explain_prediction(feature_vector: dict) -> dict:
+    allow_fallback = os.getenv("ESA_ALLOW_FALLBACK") == "1"
+
     if not MODEL_PATH.exists() or not COLUMNS_PATH.exists() or not _SHAP_AVAILABLE or not _PANDAS_AVAILABLE:
+        if not allow_fallback:
+            raise ModelUnavailableError("Trained model or SHAP dependencies are unavailable")
         logger.warning("SHAP model unavailable; using fallback heuristic prediction.")
         return _simple_rule_prediction(feature_vector)
 
     try:
         explainer, model, feature_columns = _get_explainer()
     except Exception as exc:
+        if not allow_fallback:
+            raise ModelUnavailableError(f"Unable to load SHAP model: {exc}") from exc
         logger.warning("Unable to load SHAP model: %s", exc)
         return _simple_rule_prediction(feature_vector)
 

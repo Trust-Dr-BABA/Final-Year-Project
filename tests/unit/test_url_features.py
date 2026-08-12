@@ -3,7 +3,6 @@ test_url_features.py — Unit tests for URL feature extraction.
 All VirusTotal API calls are mocked — no real network calls.
 """
 
-import pytest
 
 from backend.feature_extractor.url_features import extract_url_features
 
