@@ -30,6 +30,12 @@ async function runAnalysis(tabId, url) {
     if (result.verdict === "phishing") {
       chrome.action.setBadgeText({ text: "!", tabId });
       chrome.action.setBadgeBackgroundColor({ color: "#ef4444", tabId });
+      // Gated to the phishing tier only (score > 0.70), never suspicious (Sprint 3.2) — the
+      // threshold lives once, in the backend's verdict label, rather than being duplicated here.
+      chrome.tabs.sendMessage(tabId, {
+        type: "SHOW_INTERSTITIAL",
+        payload: { url, confidencePct: result.confidence_pct, reasons: result.top_reasons },
+      }).catch(() => {}); // the content script may not be injectable on this page (e.g. chrome://); non-fatal
     } else if (result.verdict === "suspicious") {
       chrome.action.setBadgeText({ text: "?", tabId });
       chrome.action.setBadgeBackgroundColor({ color: "#f59e0b", tabId });
@@ -104,6 +110,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.tabs.get(tabId, (tab) => {
       if (tab) chrome.tabs.reload(tabId);
     });
+  }
+
+  if (message.type === "INTERSTITIAL_LEAVE") {
+    const tabId = sender.tab?.id;
+    if (tabId) chrome.tabs.remove(tabId);
   }
 
   // Always return false — nothing here sends a response.

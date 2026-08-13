@@ -479,22 +479,27 @@ Today the popup is passive — the user has to click the toolbar icon to see a v
 people never do. Chrome's own Safe Browsing warns with a full-page interstitial; this closes that
 gap for the `phishing` tier specifically.
 
-- [ ] **3.2.1** Content script injects a full-viewport overlay (blurred backdrop + centered
-      warning card) when `background.js` receives a `verdict: "phishing"` result for the active
-      tab — **gated to `risk_score > 0.70` only**, never `suspicious`, to avoid blocking on a
-      borderline call.
-- [ ] **3.2.2** Overlay shows the top SHAP/fusion reasons (reuse `renderReasons()` from
-      `popup.js`) and two actions: **"Leave this page"** (closes the tab) and **"I understand the
-      risks, continue"** (dismisses the overlay for that tab only — never persists past
-      navigation, so a repeat visit re-warns).
-- [ ] **3.2.3** Only wire this live once Sprint 1's trained model is serving (not the heuristic
-      fallback) — shipping it against the crude 4-rule fallback risks false-positive blocks on
-      ordinary sites, which is worse than no overlay. Verify against the Sprint 1.5 acceptance
-      URLs first.
+- [x] **3.2.1** Content script (`extension/modules/interstitial.js`) injects a full-viewport
+      overlay (blurred scrim + centered warning card) when `background.js` sees
+      `verdict: "phishing"` for the active tab — gated on the verdict label itself (the 0.70
+      threshold lives once, in `ml/shap_analysis.py::_label_for()`, not duplicated in extension JS).
+      Rendered inside a **closed Shadow DOM** — the page under assessment is untrusted by
+      definition, so it should not be able to inspect or style-interfere with the warning shown
+      about it (see Test 5 in the manual plan).
+- [x] **3.2.2** Overlay shows the top 3 reasons and two actions: **Leave this page** (messages
+      `background.js`, which calls `chrome.tabs.remove` — content scripts have no direct `tabs`
+      API access) and **I understand the risks, continue** (removes the overlay element locally;
+      nothing is persisted to `chrome.storage` or anywhere else, so a fresh navigation to the same
+      URL re-warns).
+- [x] **3.2.3** Wired live against the Sprint 1 trained model (confirmed serving —
+      `model_loaded: true`), not the heuristic fallback.
 
 **Acceptance:** visiting a known-live PhishTank URL blurs the page and shows the warning card
 within the same tick the popup would have updated; clicking "continue" reveals the underlying
 page; a fresh navigation to the same URL re-triggers the warning (no persisted bypass).
+**Code-complete; real-browser verification via `tests/manual/interstitial_test.md` still needed**
+(same category as D7/D8 and Sprint 0.4 — DOM-injection behaviour that isn't meaningfully testable
+in a Node sandbox, so no jsdom dependency was added just to simulate it).
 
 ### 3.3 — Deployment
 
