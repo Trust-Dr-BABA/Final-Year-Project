@@ -10,8 +10,8 @@ Train: 15748 rows (8000 phishing). Test: 3937 rows (2000 phishing).
 |---|---|---|---|---|
 | B1 Blocklist lookup | 0.000 | 0.000 | 0.000 | 0.500 |
 | B2 url_length only | 0.668 | 0.494 | 0.568 | 0.674 |
-| B3 Logistic regression | 0.828 | 0.665 | 0.738 | 0.826 |
-| B4 XGBoost (URL-only) | 0.877 | 0.620 | 0.726 | 0.851 |
+| B3 Logistic regression | 0.828 | 0.666 | 0.739 | 0.827 |
+| B4 XGBoost (URL-only) | 0.873 | 0.621 | 0.726 | 0.852 |
 
 **B1's recall on this test set is 0.0%.** By construction of the split, every test URL is absent from the training blocklist — this number *is* "recall on URLs absent from the blocklist," which is the direct quantitative answer to "why not just use a blocklist?" (claim C1).
 
@@ -24,8 +24,8 @@ Train: 16214 rows (8507 phishing). Test: 3471 rows (1493 phishing).
 |---|---|---|---|---|
 | B1 Blocklist lookup | 0.000 | 0.000 | 0.000 | 0.500 |
 | B2 url_length only | 0.468 | 0.413 | 0.439 | 0.574 |
-| B3 Logistic regression | 0.717 | 0.616 | 0.663 | 0.793 |
-| B4 XGBoost (URL-only) | 0.815 | 0.601 | 0.692 | 0.840 |
+| B3 Logistic regression | 0.717 | 0.617 | 0.663 | 0.794 |
+| B4 XGBoost (URL-only) | 0.807 | 0.591 | 0.683 | 0.839 |
 
 **B1's recall on this test set is 0.0%.** By construction of the split, every test URL is absent from the training blocklist — this number *is* "recall on URLs absent from the blocklist," which is the direct quantitative answer to "why not just use a blocklist?" (claim C1).
 
@@ -34,8 +34,8 @@ Train: 16214 rows (8507 phishing). Test: 3471 rows (1493 phishing).
 
 | | Predicted legitimate | Predicted phishing |
 |---|---|---|
-| **Actually legitimate** | 1763 | 174 |
-| **Actually phishing** | 760 | 1240 |
+| **Actually legitimate** | 1756 | 181 |
+| **Actually phishing** | 758 | 1242 |
 
 ## Note on the fused model (no B5 row)
 
@@ -47,26 +47,26 @@ Measured on 3937 test URLs (2000 phishing). 10 equal-width bins.
 
 | Metric | Before | After Platt scaling |
 |---|---|---|
-| Brier score | 0.1629 | 0.1641 |
-| Expected Calibration Error | 0.0820 | 0.0803 |
+| Brier score | 0.1622 | 0.1647 |
+| Expected Calibration Error | 0.0821 | 0.0799 |
 
 ![Reliability diagram](reliability_diagram.png)
 
 | Bin | Mean predicted | Observed accuracy | Count |
 |---|---|---|---|
-| 0.0–0.1 | 0.054 | 0.141 | 834 |
-| 0.1–0.2 | 0.146 | 0.266 | 628 |
-| 0.2–0.3 | 0.249 | 0.350 | 429 |
-| 0.3–0.4 | 0.349 | 0.466 | 326 |
-| 0.4–0.5 | 0.444 | 0.565 | 306 |
-| 0.5–0.6 | 0.549 | 0.642 | 162 |
-| 0.6–0.7 | 0.647 | 0.723 | 148 |
-| 0.7–0.8 | 0.753 | 0.839 | 155 |
-| 0.8–0.9 | 0.857 | 0.903 | 226 |
-| 0.9–1.0 | 0.971 | 0.961 | 723 |
+| 0.0–0.1 | 0.055 | 0.137 | 830 |
+| 0.1–0.2 | 0.143 | 0.271 | 645 |
+| 0.2–0.3 | 0.250 | 0.333 | 418 |
+| 0.3–0.4 | 0.350 | 0.459 | 314 |
+| 0.4–0.5 | 0.444 | 0.606 | 307 |
+| 0.5–0.6 | 0.546 | 0.604 | 169 |
+| 0.6–0.7 | 0.645 | 0.768 | 142 |
+| 0.7–0.8 | 0.752 | 0.771 | 144 |
+| 0.8–0.9 | 0.857 | 0.922 | 245 |
+| 0.9–1.0 | 0.971 | 0.960 | 723 |
 
 
-Platt scaling was fitted because ECE (0.0820) exceeded 0.05. It improved calibration (0.0820 → 0.0803).
+Platt scaling was fitted because ECE (0.0821) exceeded 0.05. It improved calibration (0.0821 → 0.0799).
 
 ## Explanation faithfulness — top-3 SHAP ablation (claim C3)
 
@@ -75,32 +75,36 @@ For each of 3937 temporal-split test URLs, the top-3 SHAP-attributed features we
 | Metric | Value |
 |---|---|
 | URLs evaluated | 3937 |
-| Mean absolute error (predicted vs. observed shift) | 1.0027 |
-| Directional agreement (all cases) | 87.5% |
-| Directional agreement (\|predicted shift\| > 0.05, n=3905) | 87.6% |
+| Mean absolute error (predicted vs. observed shift) | 0.9913 |
+| Directional agreement (all cases) | 87.0% |
+| Directional agreement (\|predicted shift\| > 0.05, n=3920) | 87.1% |
 
-Acceptance target: ≥ 90% directional agreement. Not met on the full set (87.5%).
+Acceptance target: ≥ 90% directional agreement. Not met on the full set (87.0%).
 
 Exact agreement between predicted and observed shift is not expected: SHAP attributes a *specific* prediction under the *observed* feature distribution, and simultaneously intervening on three features moves the input off that distribution on a model that is not additive in its inputs. Directional agreement is the criterion that actually tests faithfulness; the MAE quantifies the size of the resulting interaction effects.
 
+
 ## False positives on the deep-path holdout
 
-Measured on `ml/data/processed/fp_holdout.csv` — 1,488 real deep-path URLs from 806 domains,
-disjoint from every domain used in training (see `ml/data/raw/DATASET_SOURCES.md`). For a browser
-extension this is the most consequential single figure in this report: a detector that flags
-mainstream, previously-unseen sites is unusable regardless of its F1.
+Measured on `ml/data/processed/fp_holdout.csv` — 1488 real deep-path URLs, disjoint domains from every training URL (see `ml/data/raw/DATASET_SOURCES.md`). Scored through the live `ml.shap_analysis.explain_prediction()` path, the same code the service calls.
 
 | Band | Count | Rate |
 |---|---|---|
-| legitimate | 1,170 | 78.6% |
-| suspicious | 187 | 12.6% |
-| **phishing** | **131** | **8.8%** |
+| legitimate | 1161 | 78.0% |
+| suspicious | 201 | 13.5% |
+| **phishing** | **126** | **8.5%** |
 
-An 8.8% false-positive rate in the phishing band (the band that raises the blocking interstitial,
-§3.7.2) on popular, legitimate URLs is a genuine, measured limitation. It is not a one-off: the
-roadmap's own named acceptance example, `https://github.com/torvalds/linux/blob/master/README`,
-scores 0.564 ("suspicious") rather than clearing the `< 0.40` bar, driven almost entirely by
-`url_entropy` on a URL where every other lexical feature reads as clean. Full investigation and
-misfire samples are recorded in `ml/reports/training_log.md`. This was not tuned away against this
-same holdout set — doing so would fit to the measurement instrument rather than fix the underlying
-model, the exact error Section 4.7.1 documents correcting once already.
+A 8.5% false-positive rate in the phishing band (the band that raises the blocking interstitial, §3.7.2) on popular, legitimate, previously-unseen URLs is a genuine, measured limitation — see `ml/reports/training_log.md` for the investigation into individual misfires. Not tuned away against this same holdout, which would fit to the measurement instrument rather than the underlying problem.
+
+
+## Latency — POST /analyze
+
+Measured against `http://127.0.0.1:8000` (10 distinct domains, real model loaded). Cold pass paced at one request per 16s to stay under VirusTotal's free-tier rate limit rather than measuring how fast VT rejects an over-limit burst; warm pass repeats the same domains immediately after, against the 1-hour TTL cache.
+
+| Condition | p50 | p95 | NFR-01 budget |
+|---|---|---|---|
+| Cold VT cache | 1.148s | 1.593s | ≤ 10s |
+| Warm VT cache | 0.063s | 0.078s | ≤ 1s |
+
+Met (cold), met (warm) against NFR-01.
+

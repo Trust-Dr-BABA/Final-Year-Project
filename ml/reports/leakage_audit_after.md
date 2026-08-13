@@ -17,7 +17,7 @@ How well each feature separates the classes *by itself*. `AUC` is directional; `
 | `num_special_chars` | 0.5796 | 0.5796 | 1.094 | 2.071 | no |
 | `has_https` | 0.4683 | 0.5317 | 0.993 | 0.929 | no |
 | `suspicious_tld_flag` | 0.5142 | 0.5142 | 0.004 | 0.033 | no |
-| `brand_impersonation` | 0.5040 | 0.5040 | 0.014 | 0.022 | no |
+| `brand_impersonation` | 0.5058 | 0.5058 | 0.016 | 0.028 | no |
 | `has_ip_address` | 0.5006 | 0.5006 | 0.000 | 0.001 | no |
 
 ## Structural balance

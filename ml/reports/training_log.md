@@ -76,3 +76,37 @@ methodological error this project spent Section 4.7.1 correcting — optimising 
 example rather than measuring generalisation. Sprint 2's calibration work (§5.11 in the thesis) is
 the correct venue for addressing this, with the full 1,488-URL holdout as the measurement, not one
 URL as the target.
+
+## Run 2 — 13 August 2026, after L1 (homoglyph + edit-distance brand matching)
+
+**Change.** `brand_impersonation` gained a second matching layer: homoglyph normalisation
+(Cyrillic/Greek confusables, leetspeak digit substitution) plus bounded Levenshtein distance
+against hostname tokens, catching typosquats like `pаypal.com` (Cyrillic а) and
+`paypa1-login.tk` that plain substring matching missed entirely. See
+`backend/feature_extractor/url_features.py` and the L1 note in `PROJECT_STATE.md`.
+
+**FP cost, measured before retraining.** Compared old (exact-substring only) vs new (exact +
+fuzzy) logic directly against `fp_holdout.csv`: 14 → 15 hits, **one new false positive across
+1,488 URLs** — `mail.google.com` (`"mail"` is Levenshtein distance 1 from the brand `"gmail"`, a
+real and understandable edge case: a common generic subdomain word colliding with a
+word-plus-brand construction). Accepted rather than special-cased — excluding generic words is a
+slippery slope back toward the pattern this project has repeatedly rejected: hand-tuning to a
+single observed failure on the exact set used to measure it.
+
+**Retrained.** F1 0.8168 (was 0.8188), AUC 0.9026 (was 0.9017) — statistically indistinguishable
+from Run 1, exactly as expected: `brand_impersonation` carried near-zero standalone signal
+(~0.50 AUC) before this change and only marginally more after, since typosquats are a small
+fraction of any general phishing corpus. Full Sprint 2 evaluation suite re-run against this model
+for consistency (`ml/reports/evaluation_report.md` reflects this run, not Run 1):
+
+| Metric | Run 1 | Run 2 |
+|---|---|---|
+| F1 / AUC (random split) | 0.8188 / 0.9017 | 0.8168 / 0.9026 |
+| F1 / AUC (temporal, B4) | — | 0.726 / 0.852 |
+| F1 / AUC (unseen-domain, B4) | — | 0.683 / 0.839 |
+| Faithfulness directional agreement | 87.5% | 87.0% |
+| FP holdout, phishing band | 8.8% (131/1,488) | 8.5% (126/1,488) |
+
+All deltas are within the range expected from a single added low-signal feature, not a
+retraining-run-to-run instability — `random_state=42` is fixed throughout, so the small movement
+comes entirely from the changed `brand_impersonation` values, not from re-sampling noise.

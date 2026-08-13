@@ -75,6 +75,42 @@ class TestHttpsFlag:
         assert features["has_https"] == 1
 
 
+class TestBrandImpersonation:
+    def test_exact_brand_in_subdomain_flagged(self):
+        features = extract_url_features("http://paypal.secure-login.tk/")
+        assert features["brand_impersonation"] == 1
+
+    def test_brand_as_registrable_domain_not_flagged(self):
+        features = extract_url_features("https://paypal.com/signin")
+        assert features["brand_impersonation"] == 0
+
+    def test_unrelated_domain_not_flagged(self):
+        features = extract_url_features("https://example.com/login")
+        assert features["brand_impersonation"] == 0
+
+    # L1: homoglyph-normalised, bounded edit-distance matching against hostname tokens — catches
+    # typosquats a plain substring check misses entirely.
+    def test_cyrillic_homoglyph_flagged(self):
+        # "pаypal" using Cyrillic а (U+0430), visually indistinguishable from Latin a.
+        features = extract_url_features("http://pаypal-verify.tk/account")
+        assert features["brand_impersonation"] == 1
+
+    def test_leetspeak_digit_substitution_flagged(self):
+        features = extract_url_features("http://paypa1-login.tk/secure")
+        assert features["brand_impersonation"] == 1
+
+    def test_single_letter_typo_in_long_brand_flagged(self):
+        features = extract_url_features("http://microsofy-support.tk/reset")
+        assert features["brand_impersonation"] == 1
+
+    def test_distance_beyond_threshold_not_flagged(self):
+        # "apple" (5 chars, threshold 1). "azzle" is 2 substitutions away (a-Z-Z-l-e vs a-P-P-l-e)
+        # and, unlike "appleseed", does not contain "apple" as a literal substring either — this
+        # isolates the fuzzy layer's distance boundary from the pre-existing exact-substring layer.
+        features = extract_url_features("https://azzle-orchard.example.com/")
+        assert features["brand_impersonation"] == 0
+
+
 class TestVirusTotalFeatures:
     def test_vt_data_merged_correctly(self):
         """VT data passed in should appear in feature dict."""

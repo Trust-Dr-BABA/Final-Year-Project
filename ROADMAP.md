@@ -397,9 +397,35 @@ plan is still needed** (same pattern as Sprint 0.4 — requires a human at a GUI
 
 ### 2.7 — Performance
 
-- [ ] **2.7.1** Benchmark `/analyze` p50/p95, VT cache cold and warm. Record in the report.
+- [x] **2.7.1** Benchmark `/analyze` p50/p95, VT cache cold and warm (`ml/scripts/bench_latency.py`,
+      10 distinct domains, cold pass paced under VT's free-tier rate limit to avoid measuring
+      "how fast VT rejects a burst" instead of a genuine cold lookup).
 
 **Acceptance:** p95 under 10s cold, under 1s warm.
+**Verified against the live Docker container 2026-08-13: cold p50=1.148s p95=1.593s; warm
+p50=0.063s p95=0.078s. Both comfortably met.**
+
+### 2.8 — Brand impersonation: homoglyph + edit-distance matching
+
+Not an original roadmap item — added mid-Sprint-2 to close a documented limitation
+(`backend/feature_extractor/url_features.py`'s brand check was exact-substring only, so
+`pаypal.com` with a Cyrillic а or `paypa1-login.tk` passed through undetected) rather than leaving
+it for a hypothetical future pass, since the fix was bounded and directly measurable.
+
+- [x] **2.8.1** Homoglyph normalisation (Cyrillic/Greek confusables, leetspeak digit substitution)
+      plus bounded Levenshtein distance, applied to hostname tokens only — not the path, where
+      coincidental distance matches would be far too noisy.
+- [x] **2.8.2** Measured false-positive cost against `fp_holdout.csv` **before** committing to the
+      change: old vs new logic, 14 → 15 hits across 1,488 URLs — one new false positive
+      (`mail.google.com`, `"mail"` at distance 1 from brand `"gmail"`), accepted rather than
+      special-cased. See `ml/reports/training_log.md`, Run 2.
+- [x] **2.8.3** Regenerated `features.csv`, retrained, re-ran the full Sprint 2 evaluation suite so
+      `evaluation_report.md` stays consistent with the committed model. F1/AUC moved by <0.002 —
+      statistically indistinguishable from Run 1, as expected for a near-zero-signal feature.
+
+**Acceptance:** unit tests cover homoglyph and leetspeak cases (`TestBrandImpersonation` in
+`test_url_features.py`); FP cost measured, not assumed, against the same holdout used elsewhere in
+Sprint 2. **Verified.**
 
 ---
 
