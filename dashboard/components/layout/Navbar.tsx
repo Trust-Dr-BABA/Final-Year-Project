@@ -1,33 +1,42 @@
 import Link from "next/link";
+import { ThemeToggle } from "../ThemeToggle";
 
-// Sticky top navigation bar with the app title and links to Overview / API docs.
+// Sticky top navigation: wordmark, section links, theme toggle, API docs link.
 export function Navbar() {
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800 bg-[#0f0f1a]/80 backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center space-x-3 text-slate-100 font-bold text-lg">
-          <span className="text-xl">🛡️</span>
-          <span>Explainable Security Analyst</span>
-          <span className="text-xs px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-normal">
-            v0.1.0
+    <header
+      className="sticky top-0 z-50 border-b"
+      style={{ borderColor: "var(--border)", backgroundColor: "var(--bg)" }}
+    >
+      <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
+        <Link href="/" className="flex items-baseline gap-2">
+          <span
+            className="font-semibold text-[15px] tracking-tight"
+            style={{ color: "var(--text)" }}
+          >
+            Explainable Security Analyst
           </span>
         </Link>
 
-        <nav className="flex items-center space-x-6 text-sm font-medium text-slate-300">
+        <nav
+          className="flex items-center gap-6 text-[13px]"
+          style={{ color: "var(--text-muted)" }}
+        >
           <Link
             href="/"
-            className="hover:text-white transition-colors duration-150"
+            className="hover:opacity-70 transition-opacity"
+            style={{ color: "var(--text)" }}
           >
             Overview
           </Link>
-          <a
-            href="http://localhost:8000/docs"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-white transition-colors duration-150 text-slate-400"
+          <Link
+            href="/history"
+            className="hover:opacity-70 transition-opacity"
+            style={{ color: "var(--text)" }}
           >
-            API Docs ↗
-          </a>
+            History
+          </Link>
+          <ThemeToggle />
         </nav>
       </div>
     </header>

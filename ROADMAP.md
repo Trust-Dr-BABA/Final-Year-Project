@@ -435,23 +435,43 @@ Sprint 2. **Verified.**
 
 ### 3.1 — Dashboard
 
-- [ ] **3.1.1** `npm install recharts date-fns` — **not currently installed**, despite the previous
-      roadmap marking this done. Note `dashboard/AGENTS.md`: this is **Next.js 16**, not 14; read
-      `node_modules/next/dist/docs/` before writing App Router code rather than assuming Next 14
-      conventions.
-- [ ] **3.1.2** Replace the placeholder `<div>` at `dashboard/app/page.tsx:83` with a real
-      `RiskDistributionChart`.
-- [ ] **3.1.3** Build `app/history/page.tsx` — sortable, paginated table: URL, verdict badge,
-      risk %, confidence %, timestamp; row click → detail.
-- [ ] **3.1.4** Build `app/scan/[id]/page.tsx` — verdict banner, risk bar, network signals card,
+- [x] **3.1.1** `npm install recharts date-fns` — installed into `dashboard/package.json`
+      specifically (a first attempt landed them in the root workspace's `package.json` instead;
+      caught and corrected — root deps are for repo tooling, not dashboard code).
+- [x] **3.1.2** Replaced the placeholder `<div>` with a real `RiskDistributionChart`.
+- [x] **3.1.3** Built `app/history/page.tsx` — sortable (client-side, current page), paginated
+      table: URL, verdict badge, risk %, confidence %, timestamp; row click → detail.
+- [x] **3.1.4** Built `app/scan/[id]/page.tsx` — verdict banner, risk bar, network signals card,
       permission flags card, VT corroboration card (per ADR-013, shown but not modelled).
-- [ ] **3.1.5** `components/charts/ShapWaterfallChart.tsx` — horizontal bars, top 5 attributions,
-      red increases risk / green decreases, labelled with `human_readable`. Browser-signal
-      attributions render identically to SHAP ones, which is the visual payoff of ADR-014.
-- [ ] **3.1.6** `components/charts/RiskSparkline.tsx` — risk over time for repeat scans of a URL.
+- [x] **3.1.5** `components/charts/ShapWaterfallChart.tsx` — horizontal bars, top 5 attributions,
+      red increases risk / green decreases, labelled with `human_readable`.
+- [x] **3.1.6** `components/charts/RiskSparkline.tsx` — risk over time for repeat scans of a URL
+      (client-side filtered from a broad history fetch — `/history` has no per-URL filter; a real,
+      accepted gap for a research-scale demo dataset).
+- [x] **3.1.7 (added mid-sprint)** Full visual redesign, requested explicitly: both dashboard and
+      extension needed light/dark theming with a toggle, and a visual identity distinct from "the
+      generic AI-generated dashboard look" (navy background, indigo accents, Inter font,
+      glassmorphism, rounded-2xl cards, soft shadows — all present in the original scaffold).
+      Replaced with warm neutrals (paper/ink, not navy/slate), a single teal accent kept separate
+      from the semantic verdict colours, sharp 3px corners, hairline borders, Space Grotesk +
+      JetBrains Mono instead of Inter. `ThemeToggle` uses a CSS-only icon swap (both icons always
+      render; `data-theme` selects which is visible) specifically to avoid a real hydration
+      mismatch a first, React-state-based version produced — see the commit for the full
+      diagnostic trail (an inline `<script>` for the no-flash theme application also doesn't work
+      under Next.js App Router the way a plain HTML `<script>` would; fixed with `next/script
+      strategy="beforeInteractive"`). Applied the same palette to the extension popup
+      (`extension/popup/`), using `localStorage` + a separate blocking `theme_init.js` file rather
+      than an inline script — manifest.json's CSP (`script-src 'self'`) blocks inline script
+      content outright, a real constraint the dashboard's `next/script` fix doesn't share.
 
 **Acceptance:** `npx tsc --noEmit` clean; every page renders against live backend data; no
 snake_case anywhere in the rendered DOM.
+**Verified 2026-08-13** — production build (`next build`) succeeds; both themes screenshotted via
+headless Chrome against the live backend with real accumulated scan data (200+ scans from this
+session's own testing); zero hydration errors after the fixes above; ESLint's newer
+`react-hooks/static-components` and `react-hooks/set-state-in-effect` rules caught two real issues
+(a component defined inside another component's render in `HistoryTable`, and a synchronous
+setState-in-effect in an early `ThemeToggle` draft) — both fixed, not suppressed.
 
 ### 3.2 — Extension: phishing interstitial
 

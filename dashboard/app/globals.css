@@ -1,20 +1,124 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens. Two explicit themes, not a "dark mode with a lighter overlay" — light is a
+ * first-class palette, not an afterthought. Warm neutrals throughout (paper/ink, not the
+ * navy-and-slate combination every dark-mode SaaS template defaults to), sharp 3px corners
+ * instead of rounded-2xl, hairline borders instead of soft shadows, and a single deliberate
+ * accent (teal) kept separate from the verdict colors so amber unambiguously means "suspicious."
+ *
+ * `prefers-color-scheme` sets the default; an explicit `data-theme` attribute (set by
+ * ThemeToggle, persisted to localStorage) overrides it in either direction.
+ */
 :root {
-  --bg: #0f0f1a;
-  --card: #1a1a2e;
-  --border: #2a2a45;
-  --text: #e2e8f0;
-  --text-muted: #94a3b8;
+  --bg: #faf9f6;
+  --bg-raised: #ffffff;
+  --border: #ddd9d0;
+  --text: #1a1917;
+  --text-muted: #6b6860;
 
-  --safe: #22c55e;
-  --suspicious: #f59e0b;
-  --phishing: #ef4444;
+  --accent: #0d7d72;
+  --accent-text: #ffffff;
+
+  --safe: #15803d;
+  --safe-bg: #e8f3ea;
+  --suspicious: #a3540c;
+  --suspicious-bg: #f7ecdc;
+  --phishing: #b91c1c;
+  --phishing-bg: #fbe9e7;
+
+  --radius: 3px;
+  --font-mono: var(--font-mono-family), ui-monospace, "SF Mono", Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0c0c0a;
+    --bg-raised: #151512;
+    --border: #2c2b26;
+    --text: #f2f0ea;
+    --text-muted: #918e83;
+
+    --accent: #14b8a6;
+    --accent-text: #04201d;
+
+    --safe: #4ade80;
+    --safe-bg: #12241a;
+    --suspicious: #fbbf24;
+    --suspicious-bg: #2a2010;
+    --phishing: #f87171;
+    --phishing-bg: #2a1414;
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #0c0c0a;
+  --bg-raised: #151512;
+  --border: #2c2b26;
+  --text: #f2f0ea;
+  --text-muted: #918e83;
+
+  --accent: #14b8a6;
+  --accent-text: #04201d;
+
+  --safe: #4ade80;
+  --safe-bg: #12241a;
+  --suspicious: #fbbf24;
+  --suspicious-bg: #2a2010;
+  --phishing: #f87171;
+  --phishing-bg: #2a1414;
+}
+
+:root[data-theme="light"] {
+  --bg: #faf9f6;
+  --bg-raised: #ffffff;
+  --border: #ddd9d0;
+  --text: #1a1917;
+  --text-muted: #6b6860;
+
+  --accent: #0d7d72;
+  --accent-text: #ffffff;
+
+  --safe: #15803d;
+  --safe-bg: #e8f3ea;
+  --suspicious: #a3540c;
+  --suspicious-bg: #f7ecdc;
+  --phishing: #b91c1c;
+  --phishing-bg: #fbe9e7;
+}
+
+* {
+  border-color: var(--border);
 }
 
 body {
   background-color: var(--bg);
   color: var(--text);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
   min-height: 100vh;
+}
+
+.font-data {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-text);
+}
+
+/* ThemeToggle: both icons always render; CSS alone decides which is visible (see the component
+   for why — this avoids a hydration mismatch entirely rather than suppressing one). */
+.theme-toggle .icon-sun {
+  display: none;
+}
+.theme-toggle .icon-moon {
+  display: block;
+}
+:root[data-theme="light"] .theme-toggle .icon-sun {
+  display: block;
+}
+:root[data-theme="light"] .theme-toggle .icon-moon {
+  display: none;
 }

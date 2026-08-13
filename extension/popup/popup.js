@@ -32,6 +32,16 @@ function renderReasons(listId, reasons) {
   });
 }
 
+// Flip data-theme on <html> and persist the choice. theme_init.js applies it on next open.
+function initThemeToggle() {
+  document.getElementById("btn-theme-toggle")?.addEventListener("click", () => {
+    const current = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+    const next = current === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    localStorage.setItem("esa-theme", next);
+  });
+}
+
 // ── Main render ────────────────────────────────────────────────────────────
 
 // Load the current tab's cached scan result from storage and render the matching popup state.
@@ -90,4 +100,5 @@ async function render() {
 }
 
 // Run on popup open
+initThemeToggle();
 render();
