@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ESA fixture — notification on load</title>
+</head>
+<body>
+  <h1>Permission monitor fixture: notification requested 1 second after load</h1>
+  <p>
+    Calls <code>Notification.requestPermission()</code> shortly after load, inside the 3-second
+    window <code>notification_prompt_on_load</code> is meant to catch.
+  </p>
+  <script>
+    window.addEventListener("load", () => {
+      setTimeout(() => {
+        Notification.requestPermission()
+          .then((result) => console.log("[fixture] notification permission:", result));
+      }, 1000);
+    });
+  </script>
+</body>
+</html>

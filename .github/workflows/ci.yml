@@ -27,3 +27,4 @@ jobs:
       - run: npm install
       - run: npx tsc --noEmit
         working-directory: dashboard
+      - run: npm test

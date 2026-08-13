@@ -206,82 +206,89 @@ measures the wrong thing.
 
 ### 1.1 — Quantify the flaw before fixing it
 
-- [ ] **1.1.1** Write `ml/scripts/audit_dataset.py`. For a given dataset it reports, per feature:
+- [x] **1.1.1** Write `ml/scripts/audit_dataset.py`. For a given dataset it reports, per feature:
       single-feature ROC-AUC, class-conditional means, and the **path-presence rate per class**
       (fraction of URLs with a non-trivial path). Flags any feature exceeding 0.90 AUC alone.
-- [ ] **1.1.2** Run it against the *current* `dataset.csv` and save the output to
+- [x] **1.1.2** Run it against the *current* `dataset.csv` and save the output to
       `ml/reports/leakage_audit_before.md`.
 
 **Acceptance:** the "before" audit demonstrates the D1 artifact numerically — expect path-presence
 near 0% for label 0 and near 100% for label 1, and `url_length` AUC above 0.90. **This table is a
 deliverable, not scaffolding:** the before/after pair is what converts a methodological flaw into
 evidence of methodological awareness, and it belongs in the evaluation chapter.
+**Verified 2026-08-13:** `url_entropy` flagged at 0.9001 AUC; path presence benign 0.0% vs phishing
+65.2% (65.2-point gap). Exactly the predicted shape.
 
 ### 1.2 — Rebuild the dataset honestly
 
-- [ ] **1.2.1** Rewrite `ml/scripts/prepare_dataset.py` to stop discarding PhishTank metadata.
-      `usecols=["url"]` at line 28 throws away `submission_time`, `target` (the impersonated brand)
-      and `verified`/`online` — all free, and all needed later: `submission_time` enables the
-      temporal split (1.2 of Sprint 2), `target` gives ground truth for evaluating
-      `brand_impersonation`. Filter to `verified == yes`.
-- [ ] **1.2.2** Source a **path-bearing benign corpus** so both classes have realistic URL
-      structure. Preferred: sample benign full URLs from a public URL-level corpus (PhiUSIIL/UCI,
-      or a Common Crawl index sample). Crawling 10k Tranco domains for real internal URLs is the
-      fallback if no corpus is usable — correct but slow.
-- [ ] **1.2.3** Reserve Tranco top-1000 (with real deep paths) as a **held-out false-positive
-      evaluation set**, never as training negatives. This is the set that answers "does it flag
-      Wikipedia?".
-- [ ] **1.2.4** Update `ml/data/raw/DATASET_SOURCES.md` with every source, download date, row
-      count and licence. This is the provenance citation in the report.
-- [ ] **1.2.5** Re-run the audit → `ml/reports/leakage_audit_after.md`.
+- [x] **1.2.1** Rewrite `ml/scripts/prepare_dataset.py` to stop discarding PhishTank metadata.
+      _Done: retains `submission_time`, `target`; filters to `verified == yes` (10,000/10,000 passed)._
+- [x] **1.2.2** Source a **path-bearing benign corpus**.
+      _PhiUSIIL was tried first and rejected — audited empirically at 0.0% path presence, identical
+      artefact to bare Tranco domains, just a different source. Built
+      `ml/scripts/fetch_deep_benign_urls.py` instead: crawls real Tranco-ranked domain homepages
+      (rank 200–20,000) for real internal links via `asyncio` with a hard per-domain deadline
+      (an earlier Common Crawl index-based approach was abandoned after it hung for 50 minutes
+      under the index server's rate limiting). 9,000 genuine deep-path URLs from 5,288 domains in
+      476s. See `ml/data/raw/DATASET_SOURCES.md` for the full account._
+- [x] **1.2.3** Reserve a held-out false-positive evaluation set.
+      _1,488 deep-path URLs from a disjoint rank range (20,001–40,000, zero domain overlap with
+      training) → `ml/data/processed/fp_holdout.csv`, replacing the originally-planned Tranco
+      top-1000 (which, being bare domains, couldn't answer "does it flag a real deep link")._
+- [x] **1.2.4** Update `ml/data/raw/DATASET_SOURCES.md` with every source, download date, row
+      count and method.
+- [x] **1.2.5** Re-run the audit → `ml/reports/leakage_audit_after.md`.
 
 **Acceptance:** no single feature exceeds 0.90 AUC alone; path-presence rate within 15 percentage
 points across classes; ≥ 15,000 rows, each class ≥ 40%.
+**Verified 2026-08-13, PASS.** No feature exceeds 0.90 (`url_length` fell from 0.8786 → 0.4993);
+path-presence gap 13.6 points (78.9% vs 65.2%) — closed by measuring the phishing class's *own*
+path-presence rate and mixing matching bare-homepage rows into the benign class, rather than
+forcing either class to 100% or 0%. 19,685 rows, 50.8%/49.2% split.
 
 ### 1.3 — Feature set parity
 
-- [ ] **1.3.1** Regenerate `features.csv` with the *current* extractor. The existing file predates
-      `brand_impersonation` and is missing it entirely.
-- [ ] **1.3.2** Remove the three VirusTotal columns from the trained feature set per **ADR-013**.
-      They stay in `url_features.py` and on the scan record for display and corroboration — they
-      are simply not learned from. See ADR-013 for the circularity argument; this is a defensible
-      design decision, not an omission, and should be presented as such.
-- [ ] **1.3.3** Assert that `get_feature_names()` in `url_features.py` matches the generated
-      columns exactly — a unit test, so the two cannot drift again.
+- [x] **1.3.1** Regenerate `features.csv` with the *current* extractor (now includes
+      `brand_impersonation`, previously missing — this was the 12-vs-8 column drift, D4).
+- [x] **1.3.2** Remove the three VirusTotal columns from the trained feature set per **ADR-013**.
+- [x] **1.3.3** Assert that `get_feature_names()` matches the generated columns exactly.
 
 **Acceptance:** `pytest tests/unit/test_url_features.py` passes with a new parity test; `features.csv`
-column set equals `get_feature_names()` minus the VT columns.
+column set equals `get_feature_names()` minus the VT columns. **Verified — 15/15 passing.**
 
 ### 1.4 — Implement the fusion layer (claim C2)
 
-- [ ] **1.4.1** Create `backend/services/risk_fusion.py` implementing **ADR-014**: the URL model
-      yields `p_url`; each browser signal contributes a fixed, documented weight added in
-      **log-odds space**; the sum maps back through a sigmoid to the final score.
-- [ ] **1.4.2** Emit one attribution entry per active browser signal in the *same* shape SHAP
-      already produces — `{feature, value, shap_impact, human_readable}` via
-      `explainer_formatter.format_reason()`. Because SHAP values are themselves additive log-odds
-      contributions, the two families are directly comparable and can be ranked in one list.
-      **No schema change is needed anywhere downstream** — popup, dashboard and DB all work as-is.
-- [ ] **1.4.3** Rewrite `explain_prediction()` so it no longer silently drops unknown keys (D2).
-      Unrecognised features must raise, not vanish.
-- [ ] **1.4.4** Document every weight and its justification in `ml/reports/fusion_weights.md`.
+- [x] **1.4.1** Create `backend/services/risk_fusion.py` implementing **ADR-014**.
+- [x] **1.4.2** Emit one attribution entry per active browser signal in the *same* shape SHAP
+      already produces. No schema change needed downstream.
+- [x] **1.4.3** Rewrite `explain_prediction()` so it no longer silently drops unknown keys (D2) —
+      raises `ValueError` instead, with a regression test locking this in.
+- [x] **1.4.4** Document every weight and its justification in `ml/reports/fusion_weights.md`.
 
 **Acceptance:** `POST /analyze` with `tracker_count: 40, has_mixed_content: true` returns a
 strictly higher score than the same URL with clean signals, and `top_reasons` contains at least
 one browser-signal attribution.
+**Verified live 2026-08-13** against the rebuilt+running container: clean 0.107 → dirty 0.801,
+`tracker_count`/`redirect_chain_length` both in `top_reasons` alongside `url_entropy`.
 
 ### 1.5 — Retrain
 
-- [ ] **1.5.1** Run `python ml/scripts/train_model.py`. It already writes `.pkl` and
-      `feature_columns.json` from one run — the previous drift came from hand-editing the JSON
-      afterwards. The Sprint 0 lockstep assertion now prevents that.
-- [ ] **1.5.2** Record the honest metrics. **Expect F1 to fall** relative to the old inflated
-      number — that fall is the point, and a drop from a leaky 0.97 to an honest 0.90 is a
-      *stronger* result, not a weaker one. Say so explicitly in the report.
+- [x] **1.5.1** Run `python ml/scripts/train_model.py`. Writes `.pkl` + `feature_columns.json`
+      together; lockstep assertion verified (`feature_count: 9`).
+- [x] **1.5.2** Record the honest metrics.
 
 **Acceptance:** `GET /health` reports `model_loaded: true` with matching `feature_count`;
 `https://github.com/torvalds/linux/blob/master/README` scores **below 0.40**;
 a known-live PhishTank URL scores **above 0.70**.
+**Partially met, measured honestly (`ml/reports/training_log.md`).** F1 0.8188, AUC 0.9017 — down
+from the leaky ~0.97, which is the expected and correct direction. Known phishing-style URLs score
+0.95–0.98 (met). The GitHub example scores **0.564** ("suspicious"), not under 0.40 — `url_entropy`
+is the dominant contribution on a URL where every other feature reads clean. Aggregate check
+against the full 1,488-URL holdout: 78.6% legitimate, 12.6% suspicious, **8.8% phishing-band false
+positives**. Not re-tuned against this one named example or against the holdout itself — see
+`training_log.md` for why that would be the same error Sprint 1.1–1.2 just corrected. Carried
+forward as a measured limitation; calibration in §2.3 is the relevant follow-up, not feature
+hand-tuning.
 
 ---
 
@@ -294,78 +301,99 @@ are cheap to compute and disproportionately persuasive in a viva.
 
 ### 2.1 — Evaluation protocols
 
-- [ ] **2.1.1** **Temporal split** on `submission_time`: train on the earlier window, test on the
-      later. This is the standard rigorous protocol for phishing detection and is far more
-      convincing than a random split, because it mirrors deployment — you always predict the
-      future. Report random and temporal side by side.
-- [ ] **2.1.2** **Unseen-registrable-domain holdout**: guarantee no eTLD+1 appears in both train
-      and test. Prevents the model from memorising domains.
-- [ ] **2.1.3** **False-positive rate on the Tranco top-1000 deep-URL set** from 1.2.3. For a
-      browser extension this single number is the most persuasive evidence it is usable —
-      a detector that cries wolf on popular sites is worthless regardless of its F1.
+- [x] **2.1.1** **Temporal split** on `submission_time`.
+      _`ml/scripts/evaluate_baselines.py::temporal_split()`. Phishing sorted and split by real
+      timestamp; benign has no submission timestamp (a crawl date isn't a publication date) so is
+      split randomly in matching proportion — stated explicitly rather than left implicit._
+- [x] **2.1.2** **Unseen-registrable-domain holdout**.
+      _`unseen_domain_split()` — domains assigned wholesale to train or test via `tldextract`._
+- [x] **2.1.3** **False-positive rate on the deep-path holdout** from 1.2.3 (superseding the
+      originally-planned Tranco top-1000, which was bare domains — see 1.2.3's note).
+
+**Verified 2026-08-13.** Both splits guarded by leakage tests
+(`tests/unit/test_evaluate_baselines.py`: no shared URL/domain between train and test).
 
 ### 2.2 — Baselines (claim C1)
 
-- [ ] **2.2.1** Implement four baselines and one table: (a) blocklist lookup against the training
-      PhishTank set, (b) `url_length` threshold only, (c) logistic regression on the same features,
-      (d) URL-only XGBoost, (e) full fused model.
-- [ ] **2.2.2** Report precision/recall/F1/AUC for each under both splits.
+- [x] **2.2.1** Four baselines implemented: blocklist, `url_length`-only, logistic regression,
+      URL-only XGBoost. **No fifth "fused" row** — no offline corpus carries real browser
+      telemetry to score against, which is the same reason ADR-014's weights aren't learned; stated
+      explicitly in `evaluation_report.md` rather than presenting B4 relabelled as B5.
+- [x] **2.2.2** Precision/recall/F1/AUC reported for each, both splits, uniform 0.5 threshold
+      (an early version compared XGBoost at its 0.70 production threshold against everything else
+      at 0.5 — an unfair comparison, caught and fixed before this was reported).
 
 **Acceptance:** the table shows the fused model beating the blocklist *specifically on URLs absent
-from the blocklist* — the direct, quantitative answer to "why not just use a blocklist?". Baseline
-(b) is included precisely to show the D1 artifact is gone: it should now perform poorly.
+from the blocklist*. **Verified — blocklist recall is exactly 0.0% on both splits** (by
+construction, every test URL is absent from it), which is precisely claim C1's evidence.
+`url_length`-only is now genuinely weak (F1 0.44–0.57) — confirms D1 stayed fixed. Full table in
+`ml/reports/evaluation_report.md`.
 
 ### 2.3 — Calibration (justifies the word "confidence")
 
-- [ ] **2.3.1** Reliability diagram, Brier score and Expected Calibration Error on the temporal
-      test set.
-- [ ] **2.3.2** If ECE is poor, fit Platt scaling or isotonic regression on a validation split and
-      report before/after.
+- [x] **2.3.1** Reliability diagram, Brier score and ECE on the temporal test set
+      (`ml/scripts/calibration.py`).
+- [x] **2.3.2** ECE (0.082) exceeded the 0.05 threshold, so Platt scaling was fit on a validation
+      split carved from training (never from test). It did not meaningfully help (0.082 → 0.080;
+      Brier score slightly worsened, 0.1629 → 0.1641) — reported as measured, not adjusted further.
 
-**Acceptance:** `ml/reports/evaluation_report.md` contains the reliability diagram. The product
-displays a confidence percentage in its core UX; this is the evidence that number means anything.
-Without it, "92% confident" is a decorative number — an easy and damaging viva question.
+**Acceptance:** `ml/reports/evaluation_report.md` contains the reliability diagram. **Met** —
+diagram at `ml/reports/reliability_diagram.png`, embedded in the report.
 
 ### 2.4 — Explanation faithfulness (claim C3)
 
-- [ ] **2.4.1** Implement a top-k ablation check: for N test URLs, neutralise the top-3 SHAP
-      features to their training medians, re-score, and measure the score shift against the shift
-      the attributions predicted.
-- [ ] **2.4.2** Report mean absolute error between predicted and observed shift, plus the fraction
-      of cases where the score moves in the predicted direction.
+- [x] **2.4.1** Top-3 SHAP ablation implemented (`ml/scripts/faithfulness.py`), neutralising to
+      training medians, both shifts measured in log-odds (SHAP's native space).
+- [x] **2.4.2** MAE and directional agreement reported.
 
-**Acceptance:** ≥ 90% directional agreement, documented. This validates the project's central
-claim rather than assuming it — very few undergraduate projects evaluate their own explanations,
-and doing so is the clearest available differentiator.
+**Acceptance:** ≥ 90% directional agreement, documented.
+**Measured 2026-08-13: 87.5% on 3,937 URLs — not met.** Reported honestly rather than adjusted to
+clear the bar. MAE 1.0027 log-odds. Exact agreement was never expected (SHAP attributes a specific
+prediction under the observed distribution; a 3-feature simultaneous intervention moves off that
+distribution on a non-additive model) but the shortfall from 90% is real and stated as such.
 
 ### 2.5 — Fix the confidence semantics (ADR-015)
 
-- [ ] **2.5.1** Split the two concepts: `risk_pct = round(p * 100)`;
-      `confidence_pct = round(max(p, 1-p) * 100)`. Today `confidence_pct` *is* the phishing
-      probability, which makes the dashboard's "Average Confidence" card meaningless (it averages
-      risk) and forces `popup.js:75` to compute `100 - confidence` for safe pages.
-- [ ] **2.5.2** Propagate through `backend/models/scan.py`, `routers/analyze.py`, `routers/history.py`,
-      `dashboard/lib/types.ts`, `extension/popup/popup.js`. Add an Alembic migration for the new column.
+- [x] **2.5.1** Split the two concepts: `risk_pct = round(p * 100)`;
+      `confidence_pct = round(max(p, 1-p) * 100)`.
+- [x] **2.5.2** Propagated through `backend/models/scan.py`, `routers/analyze.py`,
+      `routers/history.py` (via `Scan.to_dict()`), `dashboard/lib/types.ts`,
+      `dashboard/components/ConfidenceBadge.tsx` (its confidence-based colour fallback was now
+      meaningless, since confidence is always ≥ 50 post-fix — colour now driven by verdict alone),
+      `extension/popup/popup.js`. Alembic migration `33be02683ae4_add_risk_pct`, backfilled from
+      existing `risk_score` before the `NOT NULL` constraint, applied and verified against a live
+      Postgres (`\d scans` shows `risk_pct integer not null`).
 
 **Acceptance:** a legitimate page shows "96% confident this page is safe" and a phishing page
 "94% confident this is phishing", both read directly from the response with no arithmetic in the UI.
+**Verified** — `popup.js` no longer computes `100 - confidence`; `tests/unit/test_shap.py` locks in
+`risk_pct != confidence_pct` except at the 50/50 knife-edge.
 
 ### 2.6 — Extension correctness
 
-- [ ] **2.6.1** Move permission interception to the **main world** (`"world": "MAIN"` in the
-      manifest content-script entry, or an injected `<script>`). The current isolated-world patch
-      of `Notification.requestPermission` cannot observe the page's own calls — the permission
-      signal family is currently **non-functional**, not merely incomplete.
-- [ ] **2.6.2** Resolve the ordering race: analysis fires on `tabs.onUpdated` complete, but
-      `content_script.js` posts permission signals 3.5s after `load`. Either await the message
-      with a bounded timeout before analysing, or re-analyse when it arrives.
-- [ ] **2.6.3** Create `extension/modules/permission_monitor.js` and move the heuristics out of
-      `content_script.js`, matching the documented module layout.
-- [ ] **2.6.4** Write `tests/manual/permission_monitor_test.md` with a local fixture page that
-      requests camera on load, and verify no false flags on `https://google.com`.
+- [x] **2.6.1** Moved permission interception to the **main world**:
+      `extension/modules/permission_monitor.js`, declared with `"world": "MAIN"` in `manifest.json`.
+      The old isolated-world patch is confirmed non-functional by construction (it patches a
+      different `Notification` object than the one the page calls); the new script patches the
+      page's actual globals and relays via a `CustomEvent` to `content_script.js` (isolated world,
+      has `chrome.runtime` access), which forwards to the service worker.
+- [x] **2.6.2** Resolved the ordering race: `background.js` now re-runs analysis (via a shared
+      `runAnalysis()`) when a `PERMISSION_SIGNALS` message carries a rule flag not present in the
+      previously stored signals for that tab and the initial analysis already completed — rather
+      than delaying every analysis to wait for a signal that usually never arrives.
+- [x] **2.6.3** Created `extension/modules/permission_monitor.js`; `content_script.js` is now a
+      pure relay (interception logic fully moved out).
+- [x] **2.6.4** `tests/manual/permission_monitor_test.md` + two fixture pages
+      (`tests/manual/fixtures/camera_on_load.html`, `notification_on_load.html`) covering both the
+      interception fix and the re-analysis fix, plus a `google.com` no-false-flag check. Automated
+      coverage added too: `tests/unit/permission_monitor_test.js` exercises the full MAIN-world →
+      `CustomEvent` → isolated-world → `chrome.runtime.sendMessage` chain via two linked VM
+      contexts sharing a fake `document` — passing locally (`npm test`).
 
 **Acceptance:** loading the fixture page produces `cam_mic_on_first_visit` in the stored
 `permissionSignals`, and that flag reaches `top_reasons` in the popup.
+**Code-complete and automated-test-verified 2026-08-13; real-browser verification of the manual
+plan is still needed** (same pattern as Sprint 0.4 — requires a human at a GUI Chrome instance).
 
 ### 2.7 — Performance
 

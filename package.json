@@ -11,7 +11,7 @@
     "build:dashboard": "npm run build --workspace=dashboard",
     "lint:dashboard": "npm run lint --workspace=dashboard",
     "dev:extension": "echo \"Load unpacked extension from extension/ in chrome://extensions\"",
-    "test": "node tests/unit/network_monitor_test.js"
+    "test": "node tests/unit/network_monitor_test.js && node tests/unit/permission_monitor_test.js"
   },
   "engines": {
     "node": ">=20"

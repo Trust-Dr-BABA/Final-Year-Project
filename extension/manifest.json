@@ -39,6 +39,12 @@
       "matches": ["<all_urls>"],
       "js": ["content_script.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["modules/permission_monitor.js"],
+      "run_at": "document_start",
+      "world": "MAIN"
     }
   ],
 

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>ESA fixture — camera on load</title>
+</head>
+<body>
+  <h1>Permission monitor fixture: camera requested immediately on load</h1>
+  <p>
+    This page calls <code>navigator.mediaDevices.getUserMedia({ video: true })</code> as soon as
+    it loads, before any click or scroll — exactly the pattern
+    <code>extension/modules/permission_monitor.js</code> is meant to flag as
+    <code>cam_mic_on_first_visit</code>. The browser's own permission prompt will appear; denying
+    it is fine, the extension observes the *call*, not the outcome.
+  </p>
+  <script>
+    window.addEventListener("load", () => {
+      navigator.mediaDevices?.getUserMedia?.({ video: true })
+        .then(() => console.log("[fixture] camera granted"))
+        .catch((err) => console.log("[fixture] camera denied or unavailable:", err.message));
+    });
+  </script>
+</body>
+</html>
