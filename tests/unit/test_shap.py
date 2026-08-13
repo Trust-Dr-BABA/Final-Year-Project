@@ -1,15 +1,19 @@
 import os
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
+import ml.shap_analysis as shap_analysis
 from ml.shap_analysis import ModelUnavailableError, explain_prediction
 
 
 class TestSHAP(unittest.TestCase):
 
-    # No .pkl is committed to the repo, so without the fallback flag this must raise, not fabricate a verdict.
+    # Force the "no model artefact" condition directly rather than relying on none being present
+    # on disk — a trained .pkl is gitignored but very much present once anyone runs train_model.py.
     def test_explain_prediction_raises_without_fallback_flag(self):
-        with patch.dict(os.environ, {}, clear=False):
+        with patch.dict(os.environ, {}, clear=False), \
+             patch.object(shap_analysis, "MODEL_PATH", Path("/nonexistent/model.pkl")):
             os.environ.pop("ESA_ALLOW_FALLBACK", None)
             with self.assertRaises(ModelUnavailableError):
                 explain_prediction({"url_length": 10})

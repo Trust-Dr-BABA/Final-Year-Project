@@ -7,8 +7,5 @@
   "url_entropy",
   "has_ip_address",
   "suspicious_tld_flag",
-  "brand_impersonation",
-  "domain_age_days",
-  "vt_malicious_votes",
-  "vt_harmless_votes"
+  "brand_impersonation"
 ]
