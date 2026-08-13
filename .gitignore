@@ -14,6 +14,10 @@ env/
 ml/models/*.pkl
 ml/models/*.joblib
 
+# Large third-party download, reproducible via one command — see ml/data/raw/DATASET_SOURCES.md.
+# Used only to pick which domains to crawl; the crawl's own output (deep_benign_*.csv) is tracked.
+ml/data/raw/tranco_top1m/
+
 
 # Environment secrets
 .env
