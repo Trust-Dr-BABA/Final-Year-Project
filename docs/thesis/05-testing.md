@@ -34,12 +34,13 @@ Figures in this chapter fall into two classes, and they are marked differently.
 **Measured.** Reported as a plain value with the date and environment of the run that produced it.
 These are complete.
 
-**Pending.** Marked **⟨M-nn⟩** and listed in the register below. Each requires an execution of the
-offline pipeline against the rebuilt corpus. A pending marker is not a placeholder for a plausible
-number; it is a statement that the measurement has not yet been taken, and the register exists so
-that no marker can reach a final submission unnoticed.
+**Pending.** Marked **⟨M-nn⟩** at the point a figure was first specified, before the corresponding
+script had been run. A pending marker was never a placeholder for a plausible number; it was a
+statement that the measurement had not yet been taken. Every entry in the register below was
+subsequently executed and recorded — the tag is retained beside each result throughout this
+chapter as a traceability anchor back to this table, not because the value is still outstanding.
 
-**Table 5.1 — Pending measurement register**
+**Table 5.1 — Measurement register, all entries executed 13 August 2026**
 
 | Tag | Quantity | Produced by | Section |
 |---|---|---|---|
@@ -104,27 +105,30 @@ Any feature exceeding 0.90 AUC alone is flagged and the corpus is treated as sus
 The original corpus paired PhishTank URLs against domains from a ranking list, prefixed with a
 scheme. Expected structure: benign URLs bare, malicious URLs path-bearing.
 
-**Table 5.2 — Standalone discriminative power, original corpus** ⟨M-01⟩
+**Table 5.2 — Standalone discriminative power, original corpus (⟨M-01⟩, 20,000 rows)**
 
 | Feature | ROC-AUC alone | Mean (benign) | Mean (phishing) | Flagged |
 |---|---|---|---|---|
-| `url_length` | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ |
-| `num_digits` | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ |
-| `num_special_chars` | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ |
-| `subdomain_depth` | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ |
-| `has_https` | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ |
-| `url_entropy` | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ |
-| `has_ip_address` | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ |
-| `suspicious_tld_flag` | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ |
-| `brand_impersonation` | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ | ⟨M-01⟩ |
+| `url_entropy` | 0.9001 | 3.745 | 4.332 | **YES** |
+| `url_length` | 0.8786 | 21.852 | 58.953 | no |
+| `subdomain_depth` | 0.8066 | 0.109 | 0.785 | no |
+| `num_digits` | 0.7542 | 0.262 | 6.134 | no |
+| `num_special_chars` | 0.7203 | 0.112 | 2.071 | no |
+| `has_https` | 0.5353 | 1.000 | 0.929 | no |
+| `brand_impersonation` | 0.5081 | 0.006 | 0.022 | no |
+| `suspicious_tld_flag` | 0.5057 | 0.021 | 0.033 | no |
+| `has_ip_address` | 0.5006 | 0.000 | 0.001 | no |
 
-**Table 5.3 — Structural balance, original corpus** ⟨M-02⟩
+`has_https`'s reported AUC is its *power* (§5.4.1) — its raw, directional AUC is 0.4647, folded
+above 0.5 because an anti-correlated feature leaks exactly as much as a correlated one.
+
+**Table 5.3 — Structural balance, original corpus (⟨M-02⟩)**
 
 | Property | Benign | Phishing |
 |---|---|---|
-| URLs with a non-trivial path | ⟨M-02⟩ | ⟨M-02⟩ |
-| Mean path segments | ⟨M-02⟩ | ⟨M-02⟩ |
-| Mean URL length | ⟨M-02⟩ | ⟨M-02⟩ |
+| URLs with a non-trivial path | 0.0% | 65.2% |
+| Mean path segments | 0.00 | 1.22 |
+| Mean URL length | 21.9 | 59.0 |
 
 *Expected shape of this result, stated in advance so that it constitutes a prediction rather than a
 description: path presence near zero for the benign class and near total for the phishing class,
@@ -137,21 +141,35 @@ The corpus was rebuilt with a path-bearing benign source so that both classes ha
 structure. The ranking list was not discarded but repurposed as the false-positive holdout of
 Section 5.11.
 
-**Table 5.4 — Standalone discriminative power, rebuilt corpus** ⟨M-03⟩
+**Table 5.4 — Standalone discriminative power, rebuilt corpus (⟨M-03⟩, 19,685 rows)**
 
 | Feature | ROC-AUC alone | Δ vs original | Flagged |
 |---|---|---|---|
-| `url_length` | ⟨M-03⟩ | ⟨M-03⟩ | ⟨M-03⟩ |
-| *(remaining features as Table 5.2)* | ⟨M-03⟩ | ⟨M-03⟩ | ⟨M-03⟩ |
+| `num_digits` | 0.7447 | −0.0095 | no |
+| `url_entropy` | 0.7339 | **−0.1662** | no |
+| `subdomain_depth` | 0.6011 | −0.2055 | no |
+| `url_length` | 0.5874 | **−0.2912** | no |
+| `num_special_chars` | 0.5796 | −0.1407 | no |
+| `suspicious_tld_flag` | 0.5142 | +0.0085 | no |
+| `has_https` | 0.5317 | −0.0036 | no |
+| `brand_impersonation` | 0.5058 | −0.0023 | no |
+| `has_ip_address` | 0.5006 | 0.0000 | no |
 
-**Table 5.5 — Structural balance, rebuilt corpus** ⟨M-04⟩
+The two bold deltas are the ones that mattered: `url_entropy`, the single feature that failed the
+audit on the original corpus, drops 17 points and clears the 0.90 threshold by a wide margin;
+`url_length`, the feature most obviously tied to path presence, drops 29 points. No feature exceeds
+0.90 on the rebuilt corpus — the audit gate passes.
+
+**Table 5.5 — Structural balance, rebuilt corpus (⟨M-04⟩)**
 
 | Property | Benign | Phishing | Difference |
 |---|---|---|---|
-| URLs with a non-trivial path | ⟨M-04⟩ | ⟨M-04⟩ | ⟨M-04⟩ |
+| URLs with a non-trivial path | 78.9% | 65.2% | 13.6 points |
+| Rows | 9,685 | 10,000 | — |
 
-**Acceptance criteria for the rebuilt corpus:** no single feature above 0.90 AUC; path-presence rates
-within 15 percentage points of each other; at least 15,000 rows with neither class below 40%.
+**Acceptance criteria for the rebuilt corpus:** no single feature above 0.90 AUC (met — highest is
+0.7447); path-presence rates within 15 percentage points of each other (met — 13.6-point gap); at
+least 15,000 rows with neither class below 40% (met — 19,685 rows, 49.2%/50.8% split).
 
 ### 5.4.4 Interpretation
 
@@ -224,11 +242,11 @@ Each defect in Section 4.7 that could recur silently has a test that fails if it
 
 | Defect | Test | Assertion | Status |
 |---|---|---|---|
-| D2 — signals discarded | TC-U-22 | A vector containing a browser signal raises rather than dropping it | ⟨pending fusion layer⟩ |
-| D2 — signals inert | TC-I-06 | Identical URL with adverse signals scores strictly higher | ⟨pending fusion layer⟩ |
+| D2 — signals discarded | TC-U-22 | A vector containing an unrecognised key raises rather than being silently dropped | Pass |
+| D2 — signals inert | TC-I-06 | Identical URL with adverse signals scores strictly higher via `risk_fusion.fuse()` | Pass |
 | D4 — artefact drift | TC-U-23 | Loading a model whose arity ≠ manifest length raises, reporting both | Pass |
 | D5 — silent fallback | TC-U-17 | Missing artefact raises without the override | Pass |
-| D1 — corpus artefact | Audit gate | No feature exceeds 0.90 AUC alone | ⟨M-03⟩ |
+| D1 — corpus artefact | Audit gate | No feature exceeds 0.90 AUC alone | Pass (0.7447 highest, Table 5.4) |
 
 ## 5.6 Integration testing
 
@@ -241,7 +259,7 @@ Each defect in Section 4.7 that could recur silently has a test that fails if it
 | **TC-I-03** | Negative count rejected | — | `tracker_count: -1` | 422 | As expected | Pass |
 | **TC-I-04** | Reputation failure does not alter the verdict | Reputation double raises | Fixed URL, fixed signals | Same verdict and score as the success case; corroboration shows sentinels | As expected | Pass |
 | **TC-I-05** | Model unavailable yields 503 | No artefact, override unset | Valid URL | 503; no record written | As expected | Pass |
-| **TC-I-06** | Adverse signals raise the score | Fusion layer active | Same URL, clean vs adverse signals | Adverse strictly greater; at least one browser signal present in `top_reasons` | — | ⟨pending fusion layer⟩ |
+| **TC-I-06** | Adverse signals raise the score | Fusion layer active | Same URL, clean vs adverse signals | Adverse strictly greater; at least one browser signal present in `top_reasons` | Fused score strictly greater with `excessive_trackers` present in `top_reasons`, attribution equal to `weight x transform(value)` | Pass |
 | **TC-I-07** | Unknown identifier rejected | — | `GET /scan/not-a-uuid` | 400 | As expected | Pass |
 | **TC-I-08** | Absent record reported | Empty database | `GET /scan/<random uuid>` | 404 | As expected | Pass |
 | **TC-I-09** | Pagination bounded | — | `limit=500` | 422 | As expected | Pass |
@@ -283,8 +301,8 @@ Indexes:
 | **TC-S-07** | Signals survive to assessment | TC-S-06 complete | Observe the assessment request | Signals present in the submitted body | Rule flags `excessive_trackers` and `long_redirect_chain` returned, confirming both signals were received and evaluated | Pass |
 | **TC-S-08** | Fail-loud path visible end to end | No artefact, override unset | Navigate any page | Extension shows an error state; no verdict displayed | Service returned 503; extension displayed the error state and logged a handled failure | Pass |
 | **TC-S-09** | Development override restores service | Override set on the container | Repeat TC-S-08 | Verdict returned via the documented fallback | Assessment returned `legitimate`, risk 0.05, with the two rule flags above | Pass |
-| **TC-S-10** | Interstitial raised only on the phishing band | Fusion and model active | Navigate a known phishing URL, then a benign one | Overlay on the first, none on the second | — | ⟨pending trained model⟩ |
-| **TC-S-11** | Dismissal does not persist | TC-S-10 complete | Dismiss, then re-navigate to the same URL | Warning raised again | — | ⟨pending trained model⟩ |
+| **TC-S-10** | Interstitial raised only on the phishing band | Fusion and model active, extension built (§3.7.2) | Navigate a known phishing URL, then a benign one | Overlay on the first, none on the second | — | **Pending real-browser run** — see `tests/manual/interstitial_test.md`; not testable in the Node-VM harness used elsewhere, so this awaits the same manual pass as D7/D8 below rather than an automated result |
+| **TC-S-11** | Dismissal does not persist | TC-S-10 complete | Dismiss, then re-navigate to the same URL | Warning raised again | — | **Pending real-browser run**, same test plan |
 
 TC-S-06 through TC-S-09 form a useful chain. TC-S-08 confirms the system refuses to invent a verdict;
 TC-S-09 confirms that the refusal is configuration rather than breakage; and TC-S-07 confirms that
@@ -298,17 +316,21 @@ sit.
 
 ## 5.8 Corpus composition
 
-**Table 5.11 — Corpus composition** ⟨M-05⟩
+**Table 5.11 — Corpus composition (⟨M-05⟩)**
 
 | Property | Value |
 |---|---|
-| Total rows | ⟨M-05⟩ |
-| Phishing rows | ⟨M-05⟩ |
-| Benign rows | ⟨M-05⟩ |
-| Class balance | ⟨M-05⟩ |
-| Distinct registrable domains | ⟨M-05⟩ |
-| Submission date range | ⟨M-05⟩ |
-| Temporal split boundary | ⟨M-05⟩ |
+| Total rows | 19,685 |
+| Phishing rows | 10,000 |
+| Benign rows | 9,685 |
+| Class balance | 50.8% phishing / 49.2% benign |
+| Distinct registrable domains | 4,710 |
+| Submission date range (phishing class) | 19 January 2017 – 23 July 2026 |
+| Temporal split boundary (80/20 by submission time) | 24 May 2026 |
+
+The benign class carries no submission timestamp — a crawl date is not a publication date — so it
+is split randomly in matching proportion rather than temporally; §5.9 and Appendix B state this
+explicitly.
 
 Sources, retrieval dates, row counts and licence terms are recorded in `ml/data/raw/DATASET_SOURCES.md`
 and reproduced in Appendix B.
@@ -329,45 +351,61 @@ access to campaigns that have not yet occurred.
 **Unseen-domain split** guarantees that no registrable domain appears in both partitions,
 which prevents the model from succeeding by memorising domains rather than learning structure.
 
-**Table 5.12 — Detection performance by protocol** ⟨M-06⟩ ⟨M-07⟩ ⟨M-08⟩
+**Table 5.12 — Detection performance by protocol (phishing class; ⟨M-06⟩ ⟨M-07⟩ ⟨M-08⟩)**
 
 | Protocol | Precision | Recall | F1 | ROC-AUC |
 |---|---|---|---|---|
-| Random split | ⟨M-06⟩ | ⟨M-06⟩ | ⟨M-06⟩ | ⟨M-06⟩ |
-| Temporal split | ⟨M-07⟩ | ⟨M-07⟩ | ⟨M-07⟩ | ⟨M-07⟩ |
-| Unseen registrable domain | ⟨M-08⟩ | ⟨M-08⟩ | ⟨M-08⟩ | ⟨M-08⟩ |
+| Random split (80/20, stratified) | 0.889 | 0.756 | 0.817 | 0.903 |
+| Temporal split | 0.873 | 0.621 | 0.726 | 0.852 |
+| Unseen registrable domain | 0.807 | 0.591 | 0.683 | 0.839 |
 
-**Table 5.13 — Confusion matrix, temporal split** ⟨M-09⟩
+**Table 5.13 — Confusion matrix, temporal split (⟨M-09⟩, 3,937 test URLs)**
 
 | | Predicted phishing | Predicted legitimate |
 |---|---|---|
-| **Actually phishing** | ⟨M-09⟩ | ⟨M-09⟩ |
-| **Actually legitimate** | ⟨M-09⟩ | ⟨M-09⟩ |
+| **Actually phishing** (2,000) | 1,242 | 758 |
+| **Actually legitimate** (1,937) | 181 | 1,756 |
 
-The temporal figure is the headline result of this project. Where it falls below the random-split
-figure, the gap is itself a finding: it quantifies how much of an apparently strong random-split
-result comes from campaign overlap rather than genuine generalisation.
+The temporal figure is the headline result of this project, and it falls visibly below the
+random-split figure (F1 0.726 vs. 0.817; recall 0.621 vs. 0.756). That gap is itself a finding: it
+quantifies how much of the random-split result comes from campaign overlap — near-duplicate URLs
+from the same phishing kit landing on both sides of a random partition — rather than genuine
+generalisation to campaigns the model has not encountered. The unseen-domain split falls further
+still (F1 0.683), which is consistent: it removes not just duplicate URLs but duplicate domains,
+the harder and more realistic constraint. Recall is the metric that degrades most under both harder
+protocols (0.756 → 0.621 → 0.591) — the model misses more genuinely novel phishing than it
+misclassifies legitimate pages, which given the false-positive costs discussed in §5.11 is the
+direction an examiner should want the errors to fall on.
 
 ## 5.10 Baseline comparison
 
 Claim C1 asserts that the system generalises beyond a blocklist. That is an empirical claim about a
 comparison, so the comparison is made explicitly.
 
-**Table 5.14 — Baseline comparison under the temporal split** ⟨M-10⟩
+**Table 5.14 — Baseline comparison under the temporal split (⟨M-10⟩)**
 
 | # | Configuration | Precision | Recall | F1 | Notes |
 |---|---|---|---|---|---|
-| B1 | Blocklist lookup against the training set | ⟨M-10⟩ | ⟨M-10⟩ | ⟨M-10⟩ | Perfect precision by construction; recall bounded by overlap |
-| B2 | `url_length` threshold only | ⟨M-10⟩ | ⟨M-10⟩ | ⟨M-10⟩ | Included to demonstrate the D1 artefact is gone |
-| B3 | Logistic regression, same features | ⟨M-10⟩ | ⟨M-10⟩ | ⟨M-10⟩ | Linear reference |
-| B4 | XGBoost, URL features only | ⟨M-10⟩ | ⟨M-10⟩ | ⟨M-10⟩ | The model without fusion |
-| B5 | Full fused system | ⟨M-10⟩ | ⟨M-10⟩ | ⟨M-10⟩ | As deployed |
+| B1 | Blocklist lookup against the training set | 0.000 | 0.000 | 0.000 | Recall exactly zero by construction of the split — every test URL is absent from the training blocklist |
+| B2 | `url_length` threshold (logistic regression, one feature) | 0.668 | 0.494 | 0.568 | Included to demonstrate the D1 artefact is gone: on the original corpus this feature alone reached 0.88 AUC; here it is a weak baseline, as a single lexical feature should be |
+| B3 | Logistic regression, all 9 lexical features | 0.828 | 0.666 | 0.739 | Linear reference — notably close to B4, suggesting the lexical features are close to linearly separable and XGBoost's advantage here is modest |
+| B4 | XGBoost, URL features only | 0.873 | 0.621 | 0.726 | The model without fusion — the URL-scoring half of the deployed system |
+| B5 | Full fused system | *(no offline row — see below)* | | | As deployed, browser signals included |
 
-Two comparisons carry the argument. **B5 against B1, restricted to URLs absent from the blocklist,**
-is the direct quantitative answer to "why not just use a blocklist" — B1's recall on that subset is
-zero by definition, so any non-zero recall from B5 is generalisation the blocklist cannot provide.
-**B5 against B4** isolates the contribution of the browser signals and is therefore the measurement
-that substantiates claim C2.
+**B1's recall is 0.0% on this test set**, which is the direct quantitative answer to "why not just
+use a blocklist" (claim C1): every phishing URL that reaches the temporal test partition is, by
+construction, one the blocklist has never seen, and B4's 62.1% recall on exactly those URLs is
+generalisation a blocklist structurally cannot provide.
+
+**There is no measured B5 row.** No corpus, including this one, pairs a phishing label with real
+per-URL browser telemetry — tracker counts, redirect depth, permission-prompt timing — because that
+telemetry only exists once a browser has visited the page. Fabricating it to produce a B5 number
+would be exactly the kind of manufactured evidence ADR-014 rejects for the fusion weights
+themselves, and reporting it that way would be the same category of methodological error as D1.
+Claim C2 (browser signals measurably move the score) is validated instead by intervention —
+`tests/unit/test_risk_fusion.py` and TC-I-06 above confirm the fused score strictly increases under
+adverse signals, by exactly the documented weight — and by the live 30-URL run in §5.15, which
+exercises the complete fused pipeline against real requests rather than an offline table.
 
 B2 is included for a reason worth stating: on the original corpus it would have performed
 implausibly well. Its poor performance on the rebuilt corpus is confirmation that the artefact was
@@ -384,36 +422,70 @@ The holdout consists of the top thousand entries of a domain-ranking list with r
 article pages, repository file views, documentation pages, search results — none of which appeared in
 training.
 
-**Table 5.15 — False positives, popular deep-path holdout** ⟨M-11⟩
+**Table 5.15 — False positives, popular deep-path holdout (⟨M-11⟩)**
 
 | Metric | Value |
 |---|---|
-| URLs evaluated | ⟨M-11⟩ |
-| Classified *phishing* | ⟨M-11⟩ |
-| Classified *suspicious* | ⟨M-11⟩ |
-| False-positive rate (phishing band) | ⟨M-11⟩ |
+| URLs evaluated | 1,488 |
+| Classified *legitimate* | 1,161 (78.0%) |
+| Classified *suspicious* | 201 (13.5%) |
+| Classified *phishing* (false positive) | 126 (8.5%) |
+| False-positive rate (phishing band) | **8.5%** |
+
+An 8.5% false-positive rate in the band that raises the blocking interstitial (§3.7.2), on popular,
+legitimate, previously-unseen deep-path URLs, is a genuine and material limitation, not a rounding
+concern. `ml/reports/training_log.md` traces the misfires to two clusters: legitimate URLs with
+naturally elevated Shannon entropy from varied path segments (financial-data pages, multi-language
+site variants), and legitimate link-shortener-shaped services (`lnk.bio`, `click.octobrowser.net`)
+that are structurally close to phishing infrastructure by nature. Both are lexical-feature
+limitations, carried into §6.3 rather than tuned away against this same holdout — which would fit
+the measurement instrument, not the underlying problem, repeating the exact error the corpus
+rebuild in §4.7.1 corrected in the other direction.
 
 ### 5.11.2 Calibration
 
 The interface asserts a confidence percentage. Calibration is the evidence that the number means
 anything: among pages assigned roughly 0.8, close to 80% should be phishing.
 
-**Table 5.16 — Calibration** ⟨M-12⟩
+Measured on the temporal-split test set (3,937 URLs, 2,000 phishing), 10 equal-width bins.
 
-| Metric | Value | Interpretation |
-|---|---|---|
-| Brier score | ⟨M-12⟩ | Mean squared error of the probability; lower is better |
-| Expected calibration error | ⟨M-12⟩ | Mean gap between confidence and accuracy across bins |
-| Bins used | 10, equal width | — |
+**Table 5.16 — Calibration (⟨M-12⟩)**
 
-⟨M-13⟩ — reliability diagram, predicted probability against observed frequency, with the diagonal
-marked.
+| Metric | Before | After Platt scaling | Interpretation |
+|---|---|---|---|
+| Brier score | 0.1622 | 0.1647 | Mean squared error of the probability; lower is better |
+| Expected calibration error | 0.0821 | 0.0799 | Mean gap between confidence and accuracy across bins |
+| Bins used | 10, equal width | — | — |
 
-Where calibration is poor, Platt scaling or isotonic regression is fitted on a validation partition —
-never on the test partition — and the before-and-after figures are both reported.
+Platt scaling was fitted — on a held-out validation split of the training partition, never on the
+test partition — because the pre-scaling ECE (0.0821) exceeded the 0.05 threshold this project
+treats as acceptable without further correction. It moved ECE the intended direction (0.0821 →
+0.0799) but very slightly worsened the Brier score (0.1622 → 0.1647). Both are reported, not just
+the one that improved: reporting only the favourable metric after fitting an adjustment would
+itself be a form of the measurement-integrity failure §5.2 exists to prevent.
 
-Without this section the phrase "94% confident" in the interface would be decoration, and an examiner
-would be entitled to say so.
+**Figure 5.1 — Reliability diagram (⟨M-13⟩)**
+
+![Figure 5.1 — Reliability diagram, predicted probability against observed frequency](diagrams/out/fig-5-1-reliability.png)
+
+| Bin | Mean predicted | Observed accuracy | Count |
+|---|---|---|---|
+| 0.0–0.1 | 0.055 | 0.137 | 830 |
+| 0.1–0.2 | 0.143 | 0.271 | 645 |
+| 0.2–0.3 | 0.250 | 0.333 | 418 |
+| 0.3–0.4 | 0.350 | 0.459 | 314 |
+| 0.4–0.5 | 0.444 | 0.606 | 307 |
+| 0.5–0.6 | 0.546 | 0.604 | 169 |
+| 0.6–0.7 | 0.645 | 0.768 | 142 |
+| 0.7–0.8 | 0.752 | 0.771 | 144 |
+| 0.8–0.9 | 0.857 | 0.922 | 245 |
+| 0.9–1.0 | 0.971 | 0.960 | 723 |
+
+The model is systematically under-confident in the low bins (predicted 0.055 against an observed
+rate of 0.137) and closely calibrated at the extremes it assigns most mass to (0.9–1.0: predicted
+0.971, observed 0.960, on 723 of the 3,937 URLs). Without this section the phrase "94% confident"
+in the interface would be decoration, and an examiner would be entitled to say so; with it, the
+figure is traceable to a measured reliability curve rather than asserted.
 
 ## 5.12 Explanation faithfulness and sensitivity
 
@@ -426,45 +498,83 @@ neutralise the reasons the system gave, and see whether the score moves as they 
 contributions; set those three features to their training medians; re-score; compare the observed
 change against the sum of the three attributions.
 
-**Table 5.17 — Explanation faithfulness** ⟨M-14⟩
+**Table 5.17 — Explanation faithfulness (⟨M-14⟩)**
 
 | Metric | Value | Acceptance |
 |---|---|---|
-| URLs evaluated | ⟨M-14⟩ | — |
-| Directional agreement | ⟨M-14⟩ | ≥ 90% |
-| Mean absolute error, predicted vs observed shift | ⟨M-14⟩ | — |
+| URLs evaluated | 3,937 (temporal-split test set) | — |
+| Directional agreement | **87.0%** | ≥ 90% — **not met** |
+| Directional agreement, \|predicted shift\| > 0.05 (n = 3,920) | 87.1% | — |
+| Mean absolute error, predicted vs observed shift (log-odds) | 0.9913 | — |
 
 Exact agreement is not expected and its absence is not a failure. SHAP attributes a specific
 prediction under a specific feature distribution; intervening on three features simultaneously moves
 the input off that distribution, and tree ensembles are not additive in the input. Directional
 agreement is the meaningful criterion, and the magnitude error quantifies the interaction effects.
 
+**The 87.0% result is reported as measured, short of the 90% target, rather than adjusted to clear
+it.** Restricting to cases where the predicted shift is not near zero moves the figure by only 0.1
+point (87.1%), so the shortfall is not an artefact of near-zero predictions dominating the
+denominator. Two explanations are consistent with the gap and neither is fixable by re-tuning
+against this same measurement: XGBoost with `max_depth=6` permits real three-way feature
+interactions that SHAP's local attribution does not fully capture under a simultaneous
+three-feature ablation, and several of the model's strongest features (`url_entropy`,
+`num_digits`) are correlated with each other, so neutralising the top three together removes more
+combined signal than the sum of their individual attributions predicts. This is recorded as a
+genuine limitation of claim C3 in §6.3, not resolved here.
+
 ### 5.12.2 Fusion weight sensitivity
 
 The fusion weights are set by hand (ADR-014), which obliges the work to show that conclusions do not
 rest on their precise values.
 
-**Table 5.18 — Fusion weight sensitivity** ⟨M-15⟩
+No corpus pairs real browser telemetry with a phishing label (§5.10's note on B5), so this cannot
+measure real-world fused accuracy without fabricating per-URL signals correlated with the label —
+exactly the manufactured evidence ADR-014 rejects for the weights themselves. Instead a single
+fixed, clearly-synthetic "typical page" profile (`tracker_count=3`, no mixed content, one redirect
+— moderate, chosen well below `heuristics_engine.py`'s own "excessive" thresholds of 10 and 3) is
+applied uniformly to every URL in the temporal-split test set (3,937 URLs), and each perturbation is
+measured against that same fixed baseline.
+
+**Table 5.18 — Fusion weight sensitivity (⟨M-15⟩)**
 
 | Perturbation | Verdict changes | F1 change |
 |---|---|---|
-| All weights ×0.5 | ⟨M-15⟩ | ⟨M-15⟩ |
-| All weights ×2.0 | ⟨M-15⟩ | ⟨M-15⟩ |
-| Tracker weight only, ×0 | ⟨M-15⟩ | ⟨M-15⟩ |
-| Each weight ±25%, one at a time | ⟨M-15⟩ | ⟨M-15⟩ |
+| All weights ×0.5 | 387/3,937 (9.8%) | +0.0337 |
+| All weights ×2.0 | 1,727/3,937 (43.9%) | +0.0385 |
+| Tracker weight only, ×0 | 355/3,937 (9.0%) | +0.0318 |
+| Each weight ±25%, one at a time (largest single change) | `tracker_count` +25%: 934/3,937 (23.7%) | +0.0569 |
+
+F1 moves by only a few hundredths even at the largest perturbation tested, because the synthetic
+signal profile is identical across every URL — it shifts every fused score by a similar amount and
+so barely reorders which URLs fall above or below the 0.5 threshold, which is what F1 there depends
+on. Verdict-band churn is the more informative number, and it is **not small at the extremes**:
+doubling every weight moves 43.9% of URLs across a risk-band boundary, because a large share of this
+test set already sits close to the 0.40/0.70 boundaries and a uniform log-odds shift is enough to
+tip them. This is a genuine sensitivity, not a null result, and it is the argument for the shipped
+weights (`ml/reports/fusion_weights.md`) being set conservatively: at the shipped magnitude and a
+±25% perturbation around it, churn stays in the 9–24% range on this synthetic test, well below the
+44% seen at double the shipped weights — so the exact values chosen matter less than keeping the
+overall magnitude moderate, which is the honest form claim C2's robustness can currently take.
 
 ## 5.13 Performance
 
-**Table 5.19 — Assessment latency** ⟨M-16⟩
+**Table 5.19 — Assessment latency (⟨M-16⟩)**
 
-| Condition | p50 | p95 | Budget (NFR-01) |
-|---|---|---|---|
-| Cold reputation cache | ⟨M-16⟩ | ⟨M-16⟩ | p95 ≤ 10 s |
-| Warm reputation cache | ⟨M-16⟩ | ⟨M-16⟩ | p95 ≤ 1 s |
+Measured against the running local Docker stack (real trained model, real reputation-service
+calls), 10 distinct domains. The cold pass is paced at one request per 16 seconds to stay under the
+reputation service's 4-requests-per-minute free-tier limit, rather than measuring how quickly it
+rejects an over-limit burst; the warm pass repeats the same domains immediately after, against the
+one-hour TTL cache.
 
-The gap between the two conditions is dominated by the external call, which carries a five-second
-timeout. This is the strongest justification for the response cache: without it, every assessment
-would sit in the cold-cache distribution.
+| Condition | p50 | p95 | Budget (NFR-01) | Result |
+|---|---|---|---|---|
+| Cold reputation cache | 1.148s | 1.593s | p95 ≤ 10s | **Met** |
+| Warm reputation cache | 0.063s | 0.078s | p95 ≤ 1s | **Met** |
+
+The roughly 20x gap between conditions is dominated by the external call, which carries a
+five-second timeout — the strongest practical justification for the response cache: without it,
+every assessment would sit in the cold-cache distribution regardless of how often a domain recurs.
 
 **TC-P-02** verifies that signal collection does not delay rendering. The extension registers only
 non-blocking listeners — `onCompleted` and `onBeforeRedirect` observe, they do not intercept — so no
@@ -492,29 +602,65 @@ history — and Section 6.3 records this honestly rather than presenting the des
 
 ## 5.15 End-to-end validation
 
-**Design.** Thirty URLs: fifteen live phishing URLs drawn from a current feed, and fifteen legitimate
-URLs of which at least ten carry deep paths. The deep-path requirement is not incidental — it targets
-precisely the blind spot the original corpus created.
+**Design.** Thirty URLs, executed against the running local Docker stack via live `POST /analyze`
+calls (real reputation-service lookups included): fifteen live phishing URLs sampled from the
+OpenPhish public feed (`https://openphish.com/feed.txt`, fetched 13 August 2026, every 20th of 300
+active entries taken for hosting-pattern diversity) — deliberately not PhishTank, the training
+corpus's own source, to rule out any chance of overlap — and fifteen legitimate URLs, thirteen of
+which carry deep paths. The deep-path weighting is not incidental — it targets precisely the blind
+spot the original corpus created (§4.7.1).
 
-**Table 5.21 — End-to-end result** ⟨M-17⟩
+Live deployment to the target hosting platforms (§4.2) requires provisioning external accounts and
+was deferred to a later stage of the project, outside this submission's scope; this run exercises
+the identical Docker image locally instead, since the detection-accuracy claim under test does not
+depend on hosting location, only on the service running. `tests/e2e/system_test.md` records the
+full method.
+
+**Table 5.21 — End-to-end result (⟨M-17⟩)**
 
 | Metric | Value | Acceptance |
 |---|---|---|
 | URLs assessed | 30 | — |
-| Correctly classified | ⟨M-17⟩ | ≥ 26/30 |
-| False positives among deep-path legitimate URLs | ⟨M-17⟩ | 0 |
-| Mean assessment latency | ⟨M-17⟩ | — |
+| Correctly classified | **20/30** | ≥ 26/30 — **not met** |
+| False positives among deep-path legitimate URLs | **1/13** (`docs.python.org/3/library/asyncio.html`, 71%) | 0 — **not met** |
+| Mean assessment latency | 0.070s | — |
 
-The per-URL record — URL, expected verdict, observed verdict, risk percentage, principal reason and
-outcome — is tabulated in Appendix D.
+**Table 5.22 — Confusion matrix, 30-URL run**
 
-The second acceptance criterion is the demanding one. Twenty-six of thirty is achievable with a
-mediocre detector that happens to be conservative; zero false positives on popular deep-path URLs is
-not, and it is the condition that determines whether the extension is usable in practice.
+| | Predicted phishing | Predicted suspicious | Predicted legitimate |
+|---|---|---|---|
+| **Actually phishing** (15) | 10 | 2 | 3 |
+| **Actually legitimate** (15) | 1 | 4 | 10 |
+
+The per-URL record — URL, expected verdict, observed verdict, risk percentage and principal reason —
+is tabulated in Appendix D.
+
+**Neither acceptance criterion is met, and both misses are reported as measured rather than
+adjusted.** The second criterion is the demanding one by design: twenty-six of thirty is achievable
+with a mediocre but conservative detector, while zero false positives on popular deep-path URLs is
+not, and it is the condition that actually determines whether the extension is usable in practice.
+The single deep-path false positive was root-caused via SHAP rather than dismissed:
+`docs.python.org/3/library/asyncio.html` was scored 71% phishing almost entirely on `num_digits = 1`
+(the `3` in the Python version segment of the path, contributing +0.87 log-odds on its own) — a raw
+digit *count* rather than a length-normalised ratio, so a single incidental digit in an otherwise
+clean 46-character URL is enough to dominate the score. Three of the fifteen live phishing misses
+follow the same brittleness in the opposite direction: `url_length` carries a strong *negative*
+learned weight (Table 5.4's own audit shows it retains meaningful — if reduced — discriminative
+power), which under-scores phishing URLs hosted on trusted free platforms (`vercel.app`,
+`typedream.app`) whose URLs happen to be long. This is the same lexical-feature brittleness already
+disclosed via the 8.5% false-positive rate in §5.11.1 and the 87.0% faithfulness result in §5.12.1,
+reproducing here on live, previously-unseen data rather than appearing as a new defect. It was not
+retrained against: doing so in response to a single digit collision observed on an n = 30
+convenience sample would be statistically unsound, and would repeat, on a smaller and less rigorous
+sample, the exact overfitting-to-the-measurement-instrument error the corpus rebuild in §4.7.1 was
+written to correct. It is instead carried forward as a limitation in §6.3: **lexical URL features,
+on their own, are not a sufficient basis for a false-positive rate low enough for unsupervised
+production deployment**, and a length-normalised digit ratio in place of a raw count is identified
+there as the most promising, currently-unimplemented fix.
 
 ## 5.16 Defect log
 
-**Table 5.22 — Defect log**
+**Table 5.23 — Defect log**
 
 | # | Description | Severity | Detected by | Status |
 |---|---|---|---|---|
@@ -524,11 +670,16 @@ not, and it is the condition that determines whether the extension is usable in 
 | D4 | Artefact and column manifest out of step | Major | Manual inspection | Resolved — written together, arity asserted on load |
 | D5 | Four silent routes to a heuristic verdict | Critical | Review against ADR-016 | Resolved — raises unless overridden; health endpoint added |
 | D6 | Missing `webNavigation` permission | Major | All network signals reading zero | Resolved |
-| D7 | Permission interception in the isolated world | Major | Analysis of execution contexts | **Open** — requires main-world injection |
-| D8 | Permission signals arrive after assessment | Major | Sequence analysis | **Open** — requires bounded wait or re-assessment |
+| D7 | Permission interception in the isolated world | Major | Analysis of execution contexts | Resolved — `permission_monitor.js` re-declared with `"world": "MAIN"` in the manifest, relayed to the isolated world via `CustomEvent`; automated cross-realm test added. Real-browser confirmation still pending (TC-S-10/11) |
+| D8 | Permission signals arrive after assessment | Major | Sequence analysis | Resolved — `background.js` re-runs the assessment when a genuinely new permission flag arrives after the first pass already completed, rather than delaying every assessment for a signal window that usually produces nothing |
 | D9 | Test suite passed locally, failed in CI | Minor | First CI execution | Resolved — import path configured for the bare runner |
 | D10 | Asynchronous double on a synchronous method | Minor | Failing assertion | Resolved — the test was wrong, not the client |
+| D11 | Deep-path false positive on live E2E run (§5.15) | Major | 30-URL end-to-end run | **Open** — root-caused to `num_digits` as a raw count rather than a length-normalised ratio; not retrained against an n = 30 sample (see §5.15's reasoning). Carried into §6.3 as a limitation |
 
-D7 and D8 are recorded as open. Both affect the permission signal family, which is therefore
-non-functional in the current build. Presenting it as working would misrepresent the system, and the
-limitation is carried forward into Section 6.3.
+D7 and D8 were both genuinely open earlier in the project and are recorded here as resolved rather
+than silently corrected, because the permission signal family was reported non-functional for a real
+stretch of the work. D7's automated coverage exercises the cross-world relay mechanism in a
+simulated two-realm harness; it does not substitute for observing a real page's own
+`Notification.requestPermission` call being intercepted, which is why TC-S-10/11 in §5.7 are still
+marked pending a real-browser session rather than closed. D11 remains genuinely open — see §5.15 and
+§6.3 for why it was deliberately not chased into a retrain.

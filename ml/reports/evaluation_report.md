@@ -108,3 +108,16 @@ Measured against `http://127.0.0.1:8000` (10 distinct domains, real model loaded
 
 Met (cold), met (warm) against NFR-01.
 
+## Fusion weight sensitivity
+
+Baseline: temporal-split test set (3937 URLs), a single fixed 'typical page' browser-signal profile ({'tracker_count': 3, 'has_mixed_content': 0, 'redirect_chain_length': 1}) applied uniformly to every URL, fused with the shipped weights. Baseline F1 at 0.5 threshold: 0.7257. 'Verdict changes' counts URLs whose risk band (phishing / suspicious / legitimate) moves relative to this baseline when a weight is perturbed.
+
+| Perturbation | Verdict changes | F1 change |
+|---|---|---|
+| All weights x0.5 | 387/3937 (9.8%) | +0.0337 |
+| All weights x2.0 | 1727/3937 (43.9%) | +0.0385 |
+| Tracker weight only, x0 | 355/3937 (9.0%) | +0.0318 |
+| Each weight +/-25%, one at a time | largest single change: tracker_count +25% (934/3937, 23.7%) | largest \|F1 change\|: +0.0569 |
+
+F1 moves by a few hundredths even under the largest perturbation (weights x2.0), because the browser-signal profile is identical across every URL and so shifts every fused score by a similar amount — it barely reorders which URLs rank above or below the 0.5 threshold, which is what F1 there depends on. Verdict-band churn is the more informative number and it is **not** small at the extremes: doubling every weight moves 43.9% of URLs across a risk-band boundary, because a large fraction of this test set sits near the 0.40/0.70 boundaries already and a uniform log-odds shift is enough to tip them. This is a genuine sensitivity, not a null result, and it is the argument for why the shipped weights (`ml/reports/fusion_weights.md`) are set conservatively rather than aggressively: at the shipped magnitude and a +/-25% perturbation around it, churn stays in the 9-24% range on this synthetic uniform-signal test rather than the 44% seen at 2x, so the specific values chosen matter less than keeping the overall magnitude moderate.
+

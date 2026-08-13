@@ -71,10 +71,12 @@ Diagrams can also be edited with the PlantUML VS Code extension, which previews 
 
 ## Before submitting
 
-1. **Fill every ⟨M-nn⟩ marker.** Table 5.1 in Chapter 5 enumerates them. Each requires a run of the
-   offline pipeline. A marker left in the submitted document reads as an unfinished result.
+1. **Every ⟨M-nn⟩ figure in Table 5.1 has been measured and filled in** (13 August 2026) — the tag
+   is now a traceability anchor, not an outstanding item. If the offline pipeline is re-run before
+   submission (a corpus or code change), re-run the affected scripts and update the corresponding
+   tables rather than trusting the committed numbers to still be current.
 2. **Complete the bracketed fields** in `00-front-matter.md` (name, number, institution, supervisor,
-   date) and in Appendices B, C and D.
+   date) — Appendices B, C and D are filled from measured data and do not need completion.
 3. **Verify every reference.** Report statistics change between editions; check the year and the
    quoted figure against the edition you cite, and add access dates to online sources.
 4. **Rewrite the prose in your own voice.** You have to defend every sentence in the viva, and the

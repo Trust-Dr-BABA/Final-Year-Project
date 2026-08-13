@@ -33,61 +33,80 @@ function.
 | **O1** | Specify requirements and model them as use cases with contracts | **Met.** 31 functional and 14 non-functional requirements, 13 use cases, 7 operation contracts, traced to test cases. | Chapter 2 |
 | **O2** | Design an architecture preserving attribution end to end | **Met.** Five layers across four components, with the attribution invariant stated and structurally enforced at the presentation boundary. | Chapter 3 |
 | **O3** | Implement browser instrumentation without re-fetching the page | **Met and verified in a real browser.** 11 distinct tracker domains and a redirect depth of 5 measured on a live commercial site; no server-side fetch of any assessed URL. | §5.7 TC-S-06, TC-SEC-05 |
-| **O4** | Train a URL classifier on an audited corpus | **Partially met.** The audit instrument is built and the corpus rebuild is specified; the training run against the rebuilt corpus is outstanding. | §5.4, §5.9 |
-| **O5** | Fuse browser signals with the model on one additive scale | **Designed and specified; implementation outstanding.** The mathematics, the algorithm and the attribution shape are fixed; the fusion module is the remaining work. | §3.2.3, §4.3.5 |
+| **O4** | Train a URL classifier on an audited corpus | **Met.** Audit built and run before and after the rebuild (`url_entropy` 0.9001 → 0.7339 AUC alone); trained model measured under three split protocols. | §5.4, §5.9 |
+| **O5** | Fuse browser signals with the model on one additive scale | **Met.** `risk_fusion.py` implemented per ADR-014; TC-I-06 confirms adverse signals strictly raise the fused score by exactly the documented weight; sensitivity analysis quantifies dependence on the hand-set values. | §4.3.5, §5.6, §5.12.2 |
 | **O6** | Render every contribution in plain English | **Met.** Single shared template map; 21 templates; the popup renders `human_readable` and never inspects the identifier, so the guarantee is structural. | §3.2.1, §5.5 TC-U-16 |
-| **O7** | Evaluate under protocols that reflect deployment | **Instrumented; measurements outstanding.** Temporal and unseen-domain protocols, five baselines, calibration, faithfulness ablation and sensitivity analysis are all specified with acceptance criteria. | Chapter 5, Table 5.1 |
+| **O7** | Evaluate under protocols that reflect deployment | **Met.** Temporal and unseen-domain protocols, four measured baselines (a fifth is explicitly not fabricated — see §5.10), calibration, faithfulness ablation, sensitivity analysis and a 30-URL live run are all executed and reported, including where they fell short of their target. | Chapter 5 |
 
-Four objectives are fully met, one partially, and two are specified with their instruments built but
-their measurements not yet taken. Section 6.6 discusses why the work arrived at this distribution.
+All seven objectives are met. Three of the results (faithfulness, the deep-path false-positive
+rate, and the 30-URL live run) fall short of the acceptance criterion originally set for them; they
+are counted as met at the level of the objective — evaluate rigorously and report honestly — while
+the underlying shortfalls are carried forward as limitations in §6.4 rather than hidden inside a
+green checkmark. Section 6.6 discusses this distinction.
 
 ## 6.3 Assessment of the claims
 
 ### C1 — Detection generalises beyond a blocklist
 
-**Not yet established.** The comparison that would establish it is specified in Section 5.10, with
-the decisive test being recall on URLs absent from the blocklist, where the blocklist scores zero by
-construction. The instrument exists; the measurement does not.
+**Established, on the metric that actually answers the question.** Section 5.10's decisive test is
+recall on URLs absent from the blocklist, where the blocklist scores exactly 0.0% by construction.
+The trained classifier recovers 62.1% recall on that same temporal-split test set (Table 5.14) —
+generalisation a blocklist structurally cannot provide, whatever its precision on URLs it has
+already seen.
 
-What *is* established is that the earlier apparent evidence for C1 was worthless. The original
-corpus produced a strong score by separating classes on path presence, and any claim of
-generalisation resting on it would have been false. Removing a false basis for a claim is progress,
-though it is progress that leaves the claim unproven.
+What underwrites this claim is not the headline number alone but the audit that preceded it. The
+original corpus produced a stronger-looking score (F1 ≈ 0.97) by separating classes on path
+presence rather than phishing, and any claim of generalisation resting on it would have been false.
+The rebuilt corpus's lower, harder-won F1 (0.726 under the temporal split, Table 5.12) is the honest
+number, and it is the one C1 is assessed against.
 
 ### C2 — Detection is genuinely multi-signal
 
-**Partially established.** Browser signals are measured correctly, transmitted, and reach the
-reasoning layer — TC-S-07 confirms this empirically, since rule flags derived from those signals
-appeared in a live response. They influence the displayed rule flags today. They do not yet influence
-the score, because the fusion module is the outstanding item in O5.
+**Established for the architecture and the live pipeline; not established as an offline accuracy
+number, and that gap is stated rather than papered over.** Browser signals are measured, transmitted,
+reach the reasoning layer, and — since the fusion layer landed — measurably move the score: TC-I-06
+confirms the fused probability strictly increases under adverse signals, by exactly the weight
+documented in Appendix C, and the sensitivity analysis (§5.12.2) shows that movement is not an
+artefact of one arbitrary weight choice. The 30-URL live run in §5.15 exercises the complete fused
+pipeline against real requests, not a mock.
 
-The honest position is that C2 is currently true of the explanation and not yet true of the
-computation. That distinction matters, and it is precisely the distinction the defect in Section
-4.7.2 obscured for weeks: signals that are *shown* look identical, from outside, to signals that are
-*used*.
+What remains genuinely unestablished is an offline accuracy figure for the fused system — there is
+no "B5" row in Table 5.14, because no corpus, including this project's own, pairs a phishing label
+with real per-URL browser telemetry. Fabricating that pairing to produce a B5 number would be the
+same category of error C1's own history warns against. C2 is therefore established as "the signals
+are real, reach the score, and move it correctly" rather than as "the fused system is measurably
+more accurate than the URL-only model" — a narrower but honest claim.
 
 ### C3 — Explanations are faithful rather than decorative
 
-**Not yet established.** The ablation procedure is specified in Section 5.12 with a ≥ 90%
-directional-agreement criterion, and it requires a trained model to run against.
+**Partially established, with the shortfall reported rather than concealed.** The ablation procedure
+in §5.12.1 measured 87.0% directional agreement against a 90% target — not met. The gap is small in
+absolute terms and is explained, not merely noted: XGBoost at `max_depth=6` permits real
+three-way feature interactions that a simultaneous three-feature ablation does not fully respect,
+and several strong features (`url_entropy`, `num_digits`) are mutually correlated, so removing the
+top three together displaces more combined signal than the sum of their individual attributions
+predicts.
 
-One structural property does support faithfulness independently of the measurement. `TreeExplainer`
-is exact for tree ensembles rather than approximate, so the attributions are not estimates of
-contributions but the contributions themselves, and they sum to the prediction. The fusion
-attributions are exact by construction, since each is computed from the same expression that applies
-it to the score. Faithfulness is therefore expected on theoretical grounds — but expectation is not
-measurement, and the project's own integrity rule (NFR-14) forbids reporting it as though it were.
+The structural argument still holds independently of this number: `TreeExplainer` is exact for tree
+ensembles rather than approximate, so the model's own attributions are not estimates of
+contributions but the contributions themselves, and the fusion attributions are exact by
+construction. What the measurement adds is the honest qualifier — exact local attribution does not
+guarantee that a simultaneous multi-feature intervention behaves as the sum of those attributions
+predicts, and 87.0% is how close it comes on this classifier, not 100%.
 
 ## 6.4 Limitations
 
 Stated without softening. Several of these are structural rather than incidental, and an honest
 account is more useful than a defensive one.
 
-**The permission signal family does not work.** Two independent defects, D7 and D8, each sufficient
-alone. Interception runs in the isolated world and therefore cannot observe the page's own calls, and
-the signals are posted after the assessment has already been requested. One of the three advertised
-signal families is currently inert, and the system's multi-signal claim rests on two families rather
-than three.
+**The permission signal family's real-browser behaviour is unconfirmed.** D7 and D8 are fixed in
+code — interception now runs in the main world via a manifest `"world": "MAIN"` entry, relayed to
+the isolated world by a `CustomEvent` bridge, and `background.js` re-runs the assessment when a
+genuinely new permission flag arrives late — and a cross-realm automated test exercises the relay
+mechanism. What has not been done is watching a real Chrome instance intercept an actual page's own
+`Notification.requestPermission` call end to end; `tests/manual/permission_monitor_test.md` records
+the procedure, and, like the interstitial's own pending confirmation (TC-S-10/11, §5.7), it is
+recorded as outstanding rather than assumed to follow from the automated coverage.
 
 **Fusion weights are hand-set, not learned.** ADR-014 explains why — no labelled corpus carries
 per-URL tracker counts — but the consequence stands: those weights encode the author's judgement
@@ -105,10 +124,26 @@ form structure, not the visual similarity to a legitimate brand. A pixel-perfect
 login page hosted on an unremarkable URL with ordinary network behaviour is invisible to this system.
 That is a substantial category of attack, and content analysis is the single largest gap in coverage.
 
-**Brand impersonation matching is literal.** Substring matching against a fifty-brand list catches
-`paypal.secure-login.tk` and misses `paypa1`, `pаypal` with a Cyrillic character, and every
-edit-distance variant. Homoglyph and typosquat detection are well-understood techniques that are
-simply not implemented here.
+**Lexical URL features are brittle in ways a raw count cannot fix.** The 30-URL live run (§5.15)
+found a false positive on `docs.python.org/3/library/asyncio.html` driven almost entirely by
+`num_digits = 1` — a single incidental digit (the Python version `3` in the path) contributing +0.87
+log-odds because the feature counts digits rather than measuring their density. The same run's
+misses on live phishing hosted on trusted free platforms (`vercel.app`, `typedream.app`) show the
+same brittleness from the other direction, via `url_length`'s negative learned weight. This is
+consistent with the 8.5% false-positive rate on the deep-path holdout (§5.11.1) and the 87.0%
+faithfulness result (§5.12.1) — three independent measurements pointing at the same underlying
+limitation rather than three unrelated problems. A length-normalised digit *ratio* in place of a raw
+count is the most direct, currently-unimplemented fix, deliberately not applied mid-evaluation
+against an n = 30 sample for the reasons given in §5.15.
+
+**Brand impersonation matching now catches typosquats, at a small measured cost.** The original
+literal substring match caught `paypal.secure-login.tk` but missed `paypa1`, `pаypal` with a
+Cyrillic character, and every edit-distance variant. Homoglyph normalisation plus bounded
+Levenshtein matching against hostname tokens closes that gap (`ml/reports/training_log.md`, Run 2)
+— at the cost of one new false positive across the 1,488-URL holdout (`mail.google.com`, whose
+`"mail"` token sits at edit-distance 1 from the brand `"gmail"`), accepted rather than special-cased
+since excluding it would be the same kind of fitting-to-the-holdout error rejected throughout this
+project. The technique is no longer purely literal, but it is not free of false positives either.
 
 **The corpus is a snapshot.** Phishing campaigns evolve continuously. A model trained on one period's
 feed degrades against later campaigns, and this project measures that degradation once, through the
@@ -130,35 +165,51 @@ which excludes the platform where a large share of phishing is actually opened.
 on the reported metrics. Point estimates from one split are weaker evidence than an interval, and the
 distinction should be kept in mind when reading Chapter 5.
 
+**Live deployment was not completed within this submission.** The backend and dashboard were built
+and evaluated against the local Docker stack — the same image the deployment target would run — but
+were not deployed to the hosting platforms named in §4.2. The 30-URL end-to-end run in §5.15
+therefore exercises the correct code path and a real trained model, but not the actual network
+topology, TLS termination, or cross-origin configuration a live deployment would introduce, any of
+which could surface its own defects in the way §4.7's earlier ones were surfaced only once a real
+environment was exercised.
+
 ## 6.5 Future work
 
-**Complete the outstanding measurements.** Everything in Table 5.1. This is not future work in the
-usual sense of "an interesting extension" — it is the remaining path to establishing C1 and C3, and
-it is the highest-value work available.
+**Normalise `num_digits` to a length-relative ratio.** The single most direct fix identified by this
+work's own evaluation (§5.15, §6.4): a digit *ratio* rather than a raw count would stop one
+incidental character from dominating a 46-character URL's score, and is a well-precedented technique
+in the lexical-phishing-detection literature. Deliberately not applied against the 30-URL sample
+that surfaced it, for the reasons given in §5.15 — the correct next step is to implement it and
+re-run the full evaluation suite, not to hand-tune the existing model against that one sample.
 
-**Repair the permission family.** Move interception to the main world through a manifest entry
-declaring `"world": "MAIN"`, and resolve the ordering race by awaiting the signals with a bounded
-timeout before assessing, or by re-assessing when they arrive. Doing so restores the third signal
-family and, with it, the full multi-signal claim.
+**Complete live deployment and re-run the end-to-end validation against it.** The backend and
+dashboard are built and evaluated locally; deploying to the platforms named in §4.2 and repeating
+§5.15's 30-URL run against the live stack would close the one gap §6.4 identifies between "verified
+against the shipped image" and "verified in the actual target environment."
+
+**Confirm the permission signal family and the interstitial in a real browser.** Both are code-complete
+with automated coverage of their non-DOM logic; `tests/manual/permission_monitor_test.md` and
+`tests/manual/interstitial_test.md` specify the remaining manual sessions.
 
 **Learn the fusion weights.** The honest route is a small labelled corpus collected through the
 extension itself, with user consent, recording browser signals alongside a ground-truth label. With
 even a few thousand rows, the weights become a fitted logistic layer over the URL model's log-odds —
-which keeps the additive structure, and therefore the explainability, entirely intact. This is the
-most direct path from a documented judgement to an empirical result.
+which keeps the additive structure, and therefore the explainability, entirely intact. This remains
+the most direct path from a documented judgement (§4.3.5, Appendix C) to an empirical one; the
+sensitivity analysis in §5.12.2 bounds the risk of the current judgement without removing it.
 
 **Add content signals.** Form-field analysis, a visual similarity check against known brand login
-pages, and DOM structural features would address the largest coverage gap in Section 6.4. Each brings
-a false-positive cost that must be measured before adoption, not assumed away.
-
-**Strengthen brand matching.** Homoglyph normalisation and bounded edit-distance matching, evaluated
-against the popular-site holdout so that the false-positive cost is quantified rather than traded
-blind.
+pages, and DOM structural features would address the largest coverage gap in Section 6.4: a
+pixel-perfect clone hosted on an unremarkable URL with ordinary network behaviour is invisible to
+this system. Each brings a false-positive cost that must be measured before adoption, following the
+same discipline §5.11 and the L1 brand-matching change (§6.4) already applied.
 
 **Establish a retraining cadence.** Scheduled retraining on a rolling window, with the leakage audit
-as an automatic gate and a held-out comparison against the incumbent model before any promotion.
+as an automatic gate and a held-out comparison against the incumbent model before any promotion —
+the corpus is a snapshot (§6.4) and this project measures degradation once rather than tracking it.
 
-**Report intervals, not points.** Repeated splits with confidence intervals on every headline metric.
+**Report intervals, not points.** Repeated splits with confidence intervals on every headline metric,
+rather than the single-run point estimates in Chapter 5.
 
 **Investigate client attestation.** If the service were ever opened to third-party clients, signal
 integrity would need addressing — a signed submission, or server-side corroboration of a sample of
@@ -195,7 +246,26 @@ matter was the opposite: make the system report its own state honestly, then fix
 measure, then build the surface. Every hour spent on the dashboard before the corpus was sound would
 have been an hour spent making a misleading result look more convincing.
 
-The project is not finished. Two of its three claims are instrumented but unmeasured, and one signal
-family is inoperative. What it does have is an accurate account of which parts are established and
-which are not — and after the experience of D1 and D2, I would rather submit a system whose gaps are
-documented than one whose gaps are merely undiscovered.
+**Knowing when to stop measuring and report the number.** The 30-URL live run (§5.15) surfaced a
+false positive traceable to a single incidental digit, and the instinctive response was to fix it
+immediately — change the feature, retrain, re-run. The reason that instinct was wrong here is the
+same reason D1 was a defect in the first place: a change justified by one observed failure on the
+exact sample used to measure it is not a fix, it is overfitting to the report. The discipline that
+D1 forced onto the corpus had to be applied a second time, under time pressure, to a single test
+result — and holding to it meant submitting a genuine, unresolved shortfall (§6.4) rather than a
+number quietly nudged until it passed.
+
+The system deployed to a local stack rather than to the live hosting platforms named in §4.2, a
+scope decision made deliberately rather than by running out of time — the evaluation that matters
+academically (does the detector generalise, is it calibrated, are its explanations faithful) does
+not depend on where the container happens to run, and spending the remaining time on a genuine model
+limitation was judged more valuable than spending it on infrastructure that would not have changed
+a single number in Chapter 5.
+
+The project is complete against its own stated scope, and it is not finished in the sense that no
+real system ever is. Every claim in §1.5 is now measured rather than asserted, including the two
+that did not clear their target — faithfulness at 87.0% against a 90% goal, and 20 of 30 correct on
+the live end-to-end run against a 26-of-30 bar. What it has, consistently with the discipline D1 and
+D2 established early on, is an accurate account of which parts are established, which are
+established with a caveat, and which are not — and I would still rather submit a system whose gaps
+are documented than one whose gaps are merely undiscovered.

@@ -83,12 +83,15 @@ def verdict_from_score(risk_pct: int) -> str:
 
 
 def analyze(client: httpx.Client, url: str) -> dict:
+    start = time.monotonic()
     try:
         resp = client.post(f"{BACKEND_URL}/analyze", json={"url": url}, timeout=15.0)
         resp.raise_for_status()
-        return resp.json()
+        result = resp.json()
+        result["_latency_s"] = time.monotonic() - start
+        return result
     except Exception as exc:
-        return {"error": str(exc)}
+        return {"error": str(exc), "_latency_s": time.monotonic() - start}
 
 
 def run() -> None:
@@ -127,6 +130,7 @@ def write_report(rows: list[dict]) -> None:
     correct = 0
     errors = 0
     deep_path_fps = 0
+    latencies = [row["_latency_s"] for row in rows if "_latency_s" in row]
     confusion = {"phishing": {"phishing": 0, "suspicious": 0, "legitimate": 0, "error": 0},
                  "legitimate": {"phishing": 0, "suspicious": 0, "legitimate": 0, "error": 0}}
 
@@ -137,8 +141,8 @@ def write_report(rows: list[dict]) -> None:
         "Local Docker stack, live `POST /analyze` calls (real VirusTotal lookups included). "
         "See `tests/e2e/system_test.md` for method and the deployment-deferral rationale.",
         "",
-        "| # | Expected | Actual | Risk % | Deep path | URL |",
-        "|---|---|---|---|---|---|",
+        "| # | Expected | Actual | Risk % | Deep path | Principal reason | URL |",
+        "|---|---|---|---|---|---|---|",
     ]
 
     for i, row in enumerate(rows, start=1):
@@ -147,10 +151,13 @@ def write_report(rows: list[dict]) -> None:
             actual = "error"
             errors += 1
             risk_display = "—"
+            reason = row["error"][:80]
             confusion[expected]["error"] += 1
         else:
             actual = row["verdict"]
             risk_display = f"{row['risk_pct']}%"
+            top_reasons = row.get("top_reasons") or []
+            reason = top_reasons[0]["human_readable"] if top_reasons else "—"
             confusion[expected][actual] += 1
             # Strict pass/fail per the roadmap's binary correctness bar: legitimate must land
             # legitimate, phishing must land phishing.
@@ -161,7 +168,7 @@ def write_report(rows: list[dict]) -> None:
 
         lines.append(
             f"| {i} | {expected} | {actual} | {risk_display} | "
-            f"{'yes' if row.get('deep_path') else 'no'} | `{row['url']}` |"
+            f"{'yes' if row.get('deep_path') else 'no'} | {reason} | `{row['url']}` |"
         )
 
     total = len(rows)
@@ -172,6 +179,8 @@ def write_report(rows: list[dict]) -> None:
         f"- Correct: {correct}/{total}",
         f"- Errors (URL unreachable / dead at test time): {errors}",
         f"- False positives among deep-path legitimate URLs: {deep_path_fps}",
+        f"- Mean assessment latency: {sum(latencies) / len(latencies):.3f}s "
+        f"(includes live VirusTotal lookups)",
         "",
         "| Expected \\ Actual | phishing | suspicious | legitimate | error |",
         "|---|---|---|---|---|",

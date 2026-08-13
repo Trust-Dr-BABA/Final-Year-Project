@@ -561,15 +561,18 @@ faithfulness (87.5%/90%) and FP-holdout (8.5%) shortfalls already on record from
 
 ### 4.1 — Evaluation report
 
-- [ ] **4.1.1** Finalise `ml/reports/evaluation_report.md`: dataset provenance and the leakage
-      audit before/after; both split protocols; the baseline table; calibration; faithfulness;
-      false-positive rate on popular deep URLs; latency. **Real measured numbers only.**
-- [ ] **4.1.2** Write the methodology narrative around the leakage audit — how the flaw was found,
-      what it would have cost, how it was fixed, and what the honest metrics are. Examiners reward
-      a documented mistake far more than a suspiciously perfect result.
-- [ ] **4.1.3** `LIMITATIONS.md`: browser-sandbox scope (no OS traffic, no HTTPS payloads),
-      dataset freshness, VT free-tier limits, fusion weights are hand-set rather than learned,
-      research-scale deployment.
+- [x] **4.1.1** `ml/reports/evaluation_report.md` finalised: dataset provenance, leakage audit
+      before/after, both split protocols, the baseline table, calibration, faithfulness, false-positive
+      rate on popular deep URLs, latency, and the fusion-weight sensitivity analysis added this pass.
+      **All real measured numbers**, propagated into `docs/thesis/05-testing.md` (Tables 5.2–5.22)
+      and Appendices B–D.
+- [x] **4.1.2** Methodology narrative written into `docs/thesis/04-implementation.md` §4.7.1 and
+      `docs/thesis/05-testing.md` §5.4.4: how the leakage flaw was found, what it would have cost,
+      how it was fixed, and the honest before/after metrics.
+- [x] **4.1.3** `LIMITATIONS.md` written at the repository root — lexical-feature brittleness
+      (the E2E false positive, root-caused), hand-set fusion weights, permission/interstitial
+      real-browser confirmation still pending, deployment deferred, browser-sandbox scope, VT
+      free-tier limits, single-run evaluation.
 
 ### 4.2 — Documentation
 

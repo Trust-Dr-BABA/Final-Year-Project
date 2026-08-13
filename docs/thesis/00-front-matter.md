@@ -52,16 +52,21 @@ multi-signal and genuinely explainable at once, rather than trading one against 
 
 Evaluation is treated as a first-class deliverable. During development the training corpus was found
 to be trivially separable for a reason unrelated to phishing: benign URLs were bare domains while
-malicious URLs carried full paths, so URL length alone came close to solving the task. An audit
+malicious URLs carried full paths, so URL length alone came close to solving the task (0.88 AUC
+alone, falling to 0.59 after the corpus was rebuilt with genuine deep-path benign URLs). An audit
 instrument was built to quantify this rather than merely remove it, and the resulting before-and-after
-comparison is presented as a finding in its own right. Evaluation is specified under a temporal
-split and an unseen-registrable-domain split, against five baselines including a blocklist, with
-calibration measured and explanation faithfulness tested by ablation.
+comparison is presented as a finding in its own right. Evaluation was executed under a temporal
+split and an unseen-registrable-domain split, against four measured baselines including a blocklist
+(0.0% recall on unseen URLs, against the trained model's 62.1%), with calibration measured (ECE
+0.082), explanation faithfulness tested by ablation (87.0% directional agreement, short of the 90%
+target and reported as such), and a 30-URL live run against real, previously-unseen URLs (20/30
+correct, one deep-path false positive, both reported and root-caused rather than adjusted).
 
-Software verification is complete: 25 automated tests pass, browser instrumentation is confirmed
+Software verification is complete: 55 automated tests pass, browser instrumentation is confirmed
 against live commercial sites, and every failure path is confirmed to refuse rather than to fabricate
-a verdict. Model measurement against the rebuilt corpus is outstanding and is itemised explicitly
-rather than estimated.
+a verdict. Every figure in this report is measured against the rebuilt corpus and the trained model,
+including the results that fell short of their stated target, which are reported honestly rather
+than adjusted or omitted.
 
 **Keywords** — phishing detection, explainable artificial intelligence, SHAP, browser extension,
 privacy analysis, dataset leakage, model calibration
@@ -169,10 +174,10 @@ searching for its first use.
 | **D-n** | Defect found during development | §4.7 | D1, the corpus artefact |
 | **TC-x-nn** | Test case, where *x* denotes the level | Ch. 5 | TC-U-17, unit; TC-I-05, integration; TC-S-06, system; TC-P, performance; TC-SEC, security; TC-M, maintainability |
 | **B-n** | Evaluation baseline | §5.10 | B1, blocklist lookup |
-| **⟨M-nn⟩** | Measurement not yet taken | Table 5.1 | ⟨M-07⟩, temporal-split F1 |
+| **⟨M-nn⟩** | Measurement anchor, tagging where each figure in Chapter 5 is defined and reported | Table 5.1 | ⟨M-07⟩, temporal-split F1 |
 
 The three that matter most when reading Chapter 5 are **C-n** (what is being claimed), **⟨M-nn⟩**
-(what has not yet been measured) and **D-n** (what went wrong and how it was found).
+(where the corresponding evidence is reported) and **D-n** (what went wrong and how it was found).
 
 
 # Note on the presentation of results
@@ -180,10 +185,12 @@ The three that matter most when reading Chapter 5 are **C-n** (what is being cla
 This report distinguishes between figures that have been measured and figures that have not.
 
 Measured values are stated plainly with the date and environment of the run that produced them.
-Values not yet measured are marked **⟨M-nn⟩** and enumerated in Table 5.1. No quantitative result in
-this document is estimated, interpolated, or carried over from an earlier configuration of the
-system. Where a measurement is outstanding, the report says so rather than supplying a plausible
-figure.
+Every figure enumerated in Table 5.1 was executed and recorded on 13 August 2026; the **⟨M-nn⟩** tag
+is retained beside each one throughout Chapter 5 as a traceability anchor back to that register, not
+as a marker of an outstanding measurement. No quantitative result in this document is estimated,
+interpolated, or carried over from an earlier configuration of the system — including the results
+that fell short of their stated target (§5.11.1, §5.12.1, §5.15), which are reported as measured
+rather than adjusted or omitted.
 
 This convention is applied deliberately. Section 4.7.1 describes a corpus defect that produced an
 excellent-looking score with no validity whatsoever, and the discipline adopted afterwards is the

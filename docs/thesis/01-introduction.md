@@ -130,7 +130,7 @@ organised around testing them rather than illustrating them.
 **C1 — Detection generalises beyond a blocklist.**
 The trained model identifies phishing URLs that are absent from the blocklist it was trained
 against, under a temporal split in which every test URL was submitted later than every training
-URL. Section 5.6 reports the comparison against four baselines, including the blocklist itself.
+URL. Section 5.10 reports the comparison against four baselines, including the blocklist itself.
 
 **C2 — Detection is genuinely multi-signal.**
 Browser-observed signals measurably move the final score and appear in the ranked explanation
@@ -140,10 +140,11 @@ describes how the defect was found and Section 5.5.3 gives the test that now pre
 recurring.
 
 **C3 — Explanations are faithful rather than decorative.**
-Neutralising the three highest-ranked reasons moves the score in the direction and by roughly the
-magnitude those reasons predicted. Section 5.8 reports the ablation. Very few undergraduate
-projects test their own explanations; asserting faithfulness without measuring it would undercut
-the entire premise of the work.
+Neutralising the three highest-ranked reasons moves the score in the direction those reasons
+predicted for 87.0% of the temporal-split test set — short of the 90% target set for this claim,
+and reported as measured rather than adjusted (Section 5.12). Very few undergraduate projects test
+their own explanations; asserting faithfulness without measuring it would undercut the entire
+premise of the work, and measuring it honestly means reporting the shortfall too.
 
 A fourth outcome is methodological rather than technical, and is discussed in Sections 4.7.1 and
 5.4. During development the training corpus was found to be trivially separable for a reason that

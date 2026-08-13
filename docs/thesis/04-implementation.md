@@ -274,14 +274,21 @@ original.
 
 This was a genuine defect rather than an incomplete feature. The permission signal family was wired
 end to end — collected, transmitted, evaluated, rendered — and observed nothing, because the
-interception could not see the calls it was meant to observe. Interception must run in the main
-world, either through a manifest entry declaring `"world": "MAIN"` or by injecting a script element
-into the page.
+interception could not see the calls it was meant to observe. The fix is a second content-script
+entry in the manifest declaring `"world": "MAIN"`, so `permission_monitor.js` executes in the same
+context as the page's own script and can patch `Notification.requestPermission`,
+`navigator.mediaDevices.getUserMedia` and `navigator.geolocation.getCurrentPosition` where the page
+actually calls them. The main-world script cannot call `chrome.runtime` directly, so it dispatches a
+`CustomEvent` that the isolated-world `content_script.js` relays onward — the only channel available
+between the two worlds.
 
 A second, independent problem sits alongside it: ordering. Permission signals are posted a few
-seconds after load, while assessment fires on load completion. The signals arrive after the request
-has gone. Resolving this requires either a bounded wait before assessing or a re-assessment when the
-signals arrive. Both defects are recorded in Section 4.7 and Section 6.3.
+seconds after load, while assessment fires on load completion, so the signals arrive after the
+request has gone. Resolving this without delaying every assessment for a window that usually
+produces nothing meant re-assessing on arrival instead: `background.js` tracks which rule flags were
+already known at the time of the last assessment and triggers a fresh one only when a flag it had
+not seen before appears. Both fixes are recorded in Section 4.7 and their residual scope — automated
+coverage exists, but a real-browser confirmation is still outstanding — in Section 6.3.
 
 ## 4.5 Service implementation
 
@@ -445,11 +452,19 @@ never called.
 
 ### 4.7.7 D7 and D8 — Permission signals: wrong context, wrong time
 
-Both described in Section 4.4.3. D7 is the isolated-world interception, which observes nothing. D8 is
-the ordering race, in which signals are posted after the assessment has already been requested. They
-are independent faults with the same consequence, and either alone is sufficient to render the
-permission family inoperative. Both are recorded as open in Section 6.3 rather than presented as
-resolved.
+Both described in Section 4.4.3. D7 is the isolated-world interception, which observed nothing. D8 is
+the ordering race, in which signals were posted after the assessment had already been requested. They
+were independent faults with the same consequence, and either alone was sufficient to render the
+permission family inoperative.
+
+**Resolution.** D7: `permission_monitor.js` moved to the main world via the manifest's `"world":
+"MAIN"` declaration, relaying observed calls to the isolated world through a `CustomEvent` bridge — a
+cross-realm test exercises the full relay via two linked VM contexts. D8: `background.js` now
+re-runs the assessment when a rule flag arrives that was not present at the time of the previous run,
+rather than delaying every assessment to wait for a signal that, for most pages, never comes.
+Automated coverage exists for both; a real-browser session confirming the interception observes an
+actual page's own permission prompt has not yet been run, and is recorded as an open item in Section
+6.3 rather than presented as a completed verification it is not.
 
 ### 4.7.8 A test that concealed correct behaviour
 
