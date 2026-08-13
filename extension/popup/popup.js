@@ -58,25 +58,29 @@ async function render() {
     return;
   }
 
-  // Status is "done"
+  // Status is "done". risk_pct and confidence_pct are separate quantities (ADR-015): risk_pct is
+  // how phishing-like the page is, confidence_pct is how decisive the model is either way. Both
+  // are read directly from the response — no arithmetic here, which is exactly what ADR-015 was
+  // written to make possible (this popup used to compute `100 - confidence` for the safe case).
   const result = entry.result;
-  const confidence = result.confidence_pct ?? Math.round((result.risk_score ?? 0) * 100);
+  const riskPct = result.risk_pct ?? Math.round((result.risk_score ?? 0) * 100);
+  const confidencePct = result.confidence_pct ?? Math.max(riskPct, 100 - riskPct);
   const reasons = result.top_reasons || [];
 
   if (result.verdict === "phishing") {
     showState("state-phishing");
-    setTextById("phishing-confidence", `${confidence}% confident this is phishing`);
+    setTextById("phishing-confidence", `${confidencePct}% confident this is phishing`);
     renderReasons("phishing-reasons", reasons);
 
   } else if (result.verdict === "suspicious") {
     showState("state-suspicious");
-    setTextById("suspicious-confidence", `${confidence}% risk score`);
+    setTextById("suspicious-confidence", `${riskPct}% risk score`);
     renderReasons("suspicious-reasons", reasons);
 
   } else {
     // legitimate
     showState("state-safe");
-    setTextById("safe-confidence", `${100 - confidence}% confident this page is safe`);
+    setTextById("safe-confidence", `${confidencePct}% confident this page is safe`);
   }
 
   // Dashboard link (always visible in footer)

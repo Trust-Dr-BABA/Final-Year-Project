@@ -26,6 +26,9 @@ class Scan(Base):
         String(20), nullable=False
     )  # "phishing" | "suspicious" | "legitimate"
     risk_score: Mapped[float] = mapped_column(Float, nullable=False)
+    # ADR-015: risk_pct = round(risk_score * 100); confidence_pct = round(max(p, 1-p) * 100) — a
+    # separate, always-decisive quantity, not derivable from risk_pct by UI-side arithmetic.
+    risk_pct: Mapped[int] = mapped_column(Integer, nullable=False)
     confidence_pct: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Raw feature dictionaries stored as JSONB
@@ -52,6 +55,7 @@ class Scan(Base):
             "url": self.url,
             "verdict": self.verdict,
             "risk_score": self.risk_score,
+            "risk_pct": self.risk_pct,
             "confidence_pct": self.confidence_pct,
             "url_features": self.url_features,
             "network_signals": self.network_signals,

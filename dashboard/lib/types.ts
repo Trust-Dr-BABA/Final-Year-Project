@@ -29,7 +29,8 @@ export interface Scan {
   url: string;
   verdict: Verdict;
   risk_score: number;
-  confidence_pct: number;
+  risk_pct: number;        // round(risk_score * 100) — how phishing-like the page is (ADR-015)
+  confidence_pct: number;  // round(max(p, 1-p) * 100) — how decisive the model is (ADR-015)
   url_features?: Record<string, number | string | boolean>;
   network_signals?: NetworkSignals;
   permission_signals?: PermissionSignals;

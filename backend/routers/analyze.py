@@ -52,7 +52,8 @@ class AnalyzeResponse(BaseModel):
     scan_id: str
     verdict: str           # "phishing" | "suspicious" | "legitimate"
     risk_score: float      # Raw probability, 0.0 – 1.0
-    confidence_pct: int    # Round(risk_score * 100), shown in popup/dashboard
+    risk_pct: int           # round(risk_score * 100) — how phishing-like the page is (ADR-015)
+    confidence_pct: int    # round(max(p, 1-p) * 100) — how decisive the model is (ADR-015)
     top_reasons: list[ShapReason]
     flagged_rules: list[str]
 
@@ -98,6 +99,7 @@ async def analyze_url(request: AnalyzeRequest, db: AsyncSession = Depends(get_db
         url=url,
         verdict=analysis["label"],
         risk_score=analysis["score"],
+        risk_pct=analysis["risk_pct"],
         confidence_pct=analysis["confidence_pct"],
         url_features=url_features,
         network_signals=network_signals,
@@ -114,6 +116,7 @@ async def analyze_url(request: AnalyzeRequest, db: AsyncSession = Depends(get_db
         scan_id=str(scan.id),
         verdict=scan.verdict,
         risk_score=scan.risk_score,
+        risk_pct=scan.risk_pct,
         confidence_pct=scan.confidence_pct,
         top_reasons=scan.shap_values or [],
         flagged_rules=scan.flagged_rules or [],

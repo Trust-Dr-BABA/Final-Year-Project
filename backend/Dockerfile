@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM python:3.11-slim AS builder
 
 WORKDIR /app
@@ -8,10 +9,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies. The pip cache mount persists across builds even when the COPY
+# layer below is invalidated by a source change, so editing one file doesn't force every [ml]
+# wheel (xgboost alone is ~300MB) to be re-downloaded on the next build.
 COPY backend /app/backend
-RUN pip install --no-cache-dir --upgrade pip \
-    && pip install --no-cache-dir "/app/backend[ml]"
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --upgrade pip \
+    && pip install "/app/backend[ml]"
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM python:3.11-slim

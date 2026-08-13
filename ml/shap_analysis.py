@@ -124,9 +124,15 @@ def _finalize(base_score: float, base_reasons: list[dict[str, Any]],
             "human_readable": "No additional strong features were detected.",
         })
 
+    # ADR-015: risk and confidence are different quantities. risk_pct is how phishing-like the
+    # page is; confidence_pct is how decisive the model is, in whichever direction — always >= 50,
+    # since a coin-flip prediction is exactly 0% decisive. Conflating them (confidence_pct used to
+    # just be round(p*100)) forced the popup to compute `100 - confidence` to show a safe verdict,
+    # which is exactly the kind of UI-side arithmetic §3.1 exists to prevent.
     return {
         "score": round(p_fused, 4),
-        "confidence_pct": round(p_fused * 100),
+        "risk_pct": round(p_fused * 100),
+        "confidence_pct": round(max(p_fused, 1 - p_fused) * 100),
         "label": _label_for(p_fused),
         "top_reasons": reasons,
     }

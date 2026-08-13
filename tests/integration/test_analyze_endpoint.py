@@ -63,7 +63,8 @@ def test_analyze_endpoint_returns_valid_schema(
     }
     mock_explain.return_value = {
         "score": 0.05,
-        "confidence_pct": 5,
+        "risk_pct": 5,
+        "confidence_pct": 95,  # ADR-015: max(p, 1-p) * 100, not the same quantity as risk_pct
         "label": "legitimate",
         "top_reasons": [],
     }
@@ -73,6 +74,7 @@ def test_analyze_endpoint_returns_valid_schema(
     body = response.json()
     assert "scan_id" in body
     assert body["verdict"] == "legitimate"
-    assert body["confidence_pct"] == 5
+    assert body["risk_pct"] == 5
+    assert body["confidence_pct"] == 95
     assert isinstance(body["top_reasons"], list)
     assert isinstance(body["flagged_rules"], list)

@@ -73,6 +73,25 @@ class TestSHAP(unittest.TestCase):
         dirty_feature_names = {r["feature"] for r in dirty_result["top_reasons"]}
         self.assertTrue(dirty_feature_names & {"tracker_count", "has_mixed_content", "redirect_chain_length"})
 
+    # ADR-015: risk and confidence are separate quantities, not derivable from one another by the
+    # caller. risk_pct is round(p*100); confidence_pct is round(max(p, 1-p)*100), which is always
+    # >= 50 regardless of verdict — a legitimate page and a phishing page can each be reported as
+    # confidently classified, and the popup should never need to compute `100 - confidence`.
+    def test_risk_and_confidence_are_separate_quantities(self):
+        low_risk = {"url_length": 20, "num_digits": 0, "num_special_chars": 0, "has_ip_address": 0,
+                    "subdomain_depth": 0, "has_https": 1, "url_entropy": 3.0, "suspicious_tld_flag": 0}
+        result = explain_prediction(low_risk)
+
+        self.assertIn("risk_pct", result)
+        self.assertEqual(result["risk_pct"], round(result["score"] * 100))
+        self.assertGreaterEqual(result["confidence_pct"], 50)
+        expected_confidence = round(max(result["score"], 1 - result["score"]) * 100)
+        self.assertEqual(result["confidence_pct"], expected_confidence)
+        # For a low-risk page, confidence (how sure it's safe) and risk (how phishing-like) point
+        # in opposite directions and must not be equal except at the 50/50 knife-edge.
+        if result["risk_pct"] != 50:
+            self.assertNotEqual(result["risk_pct"], result["confidence_pct"])
+
 
 if __name__ == "__main__":
     unittest.main()
