@@ -7,3 +7,6 @@ extend-exclude = [".venv", "node_modules", "dashboard/.next"]
 "backend/main.py" = ["E402"]
 # sys.path must be extended before the local import that depends on it.
 "ml/scripts/generate_features.py" = ["E402"]
+"ml/scripts/audit_dataset.py" = ["E402"]
+"ml/scripts/calibration.py" = ["E402"]
+"ml/scripts/faithfulness.py" = ["E402"]

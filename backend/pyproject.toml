@@ -39,6 +39,7 @@ ml = [
     "xgboost==2.0.3",
     "shap==0.45.0",
     "scikit-learn==1.4.2",
+    "matplotlib==3.9.0",  # reliability diagram in ml/scripts/calibration.py — offline report only
 ]
 dev = [
     "pytest==8.2.0",

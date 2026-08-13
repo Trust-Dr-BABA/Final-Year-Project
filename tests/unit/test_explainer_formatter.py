@@ -21,6 +21,26 @@ class TestExplainerFormatter(unittest.TestCase):
             "URL is unusually long (120 characters)"
         )
 
+    # A continuous feature's SHAP attribution can land on either side of zero depending on
+    # context, unlike the fusion signals. Rendering it with the risk-increasing template
+    # regardless of sign would state the opposite of what the model actually concluded.
+    def test_url_entropy_with_negative_impact_uses_reassuring_phrasing(self):
+        result = format_reason("url_entropy", 3.68, -1.59)
+
+        self.assertEqual(
+            result,
+            "URL string randomness score is low (3.68), consistent with readable text"
+        )
+        self.assertNotIn("high", result)
+
+    def test_url_entropy_with_positive_impact_uses_alarming_phrasing(self):
+        result = format_reason("url_entropy", 5.9, 1.20)
+
+        self.assertEqual(
+            result,
+            "URL string randomness score is high (5.9), suggesting generated text"
+        )
+
     def test_has_https_true(self):
         result = format_reason("has_https", 1, -0.10)
 

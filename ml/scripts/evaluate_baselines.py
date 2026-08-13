@@ -143,18 +143,25 @@ def eval_logistic_regression(train: pd.DataFrame, test: pd.DataFrame) -> dict[st
     return _score(test["label"].to_numpy(), (y_prob > 0.5).astype(int), y_prob)
 
 
-# B4 — XGBoost on the 9 lexical features, same architecture as train_model.py.
-def eval_xgboost(train: pd.DataFrame, test: pd.DataFrame) -> tuple[dict[str, float], np.ndarray]:
+# Same architecture and hyperparameters as train_model.py — the single source of truth for the
+# evaluation model, reused by calibration.py and faithfulness.py so every Sprint 2 measurement
+# concerns the exact same fitted model rather than nominally-similar-but-different ones.
+def fit_xgboost(train: pd.DataFrame) -> XGBClassifier:
     X_train, y_train = train[FEATURE_COLS], train["label"]
-    X_test, y_test = test[FEATURE_COLS], test["label"]
     pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
-
     model = XGBClassifier(
         n_estimators=200, max_depth=6, learning_rate=0.1, eval_metric="logloss",
         scale_pos_weight=pos_weight, random_state=RANDOM_STATE, n_jobs=-1,
     )
     model.fit(X_train, y_train, verbose=False)
-    y_prob = model.predict_proba(X_test)[:, 1]
+    return model
+
+
+# B4 — XGBoost on the 9 lexical features, same architecture as train_model.py.
+def eval_xgboost(train: pd.DataFrame, test: pd.DataFrame) -> tuple[dict[str, float], np.ndarray]:
+    model = fit_xgboost(train)
+    y_test = test["label"]
+    y_prob = model.predict_proba(test[FEATURE_COLS])[:, 1]
     # 0.5, matching every other baseline in this table — comparing F1 across baselines is only
     # meaningful at a common threshold. The deployed service's 0.70/0.40 verdict bands are a
     # separate, additional design choice (invariant #3) that doesn't belong in this comparison.
