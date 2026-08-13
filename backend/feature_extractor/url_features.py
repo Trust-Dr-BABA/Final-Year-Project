@@ -23,6 +23,11 @@ SUSPICIOUS_TLDS = {
 
 SPECIAL_CHARS = set("-_@?=%&")
 
+# Display-only corroboration, never a trained feature (ADR-013) — VT ingests PhishTank, so training
+# on its votes would be circular. Named here so callers can recognise these keys without
+# re-deriving the set from feature_columns.json.
+VT_COLUMNS = frozenset({"domain_age_days", "vt_malicious_votes", "vt_harmless_votes"})
+
 
 # Compute Shannon entropy of a string, a proxy for randomness in the URL.
 def _shannon_entropy(text: str) -> float:

@@ -13,13 +13,21 @@ import os
 from pathlib import Path
 from typing import Any
 
+from backend.feature_extractor.url_features import get_feature_names
 from backend.services.explainer_formatter import format_reason
+from backend.services.risk_fusion import SIGNAL_WEIGHTS, fuse
 
 logger = logging.getLogger(__name__)
 
 MODELS_DIR = Path(__file__).parent / "models"
 MODEL_PATH = MODELS_DIR / "xgboost_phishing.pkl"
 COLUMNS_PATH = MODELS_DIR / "feature_columns.json"
+
+# Every key explain_prediction() is allowed to see: every name the extractor can produce (lexical
+# + VT, even though VT isn't trained on) plus every browser signal the fusion layer recognises.
+# Available unconditionally — unlike feature_columns.json, this doesn't require a trained artefact
+# to exist, so it works even on the ESA_ALLOW_FALLBACK development path.
+_KNOWN_FEATURE_KEYS = frozenset(get_feature_names()) | frozenset(SIGNAL_WEIGHTS.keys())
 
 
 # Raised when the trained model can't be served and ESA_ALLOW_FALLBACK isn't set (ADR-016).
@@ -81,8 +89,51 @@ def _get_explainer():
     return _explainer, _model, _feature_columns
 
 
-# Fallback heuristic prediction when the trained model or SHAP is unavailable.
-def _simple_rule_prediction(feature_vector: dict[str, Any]) -> dict[str, Any]:
+# Raise if feature_vector carries a key neither the model, VT display, nor fusion recognises —
+# silently dropping an unrecognised feature is exactly the defect (D2) that left browser signals
+# computed, transmitted, and never actually used for weeks. See PROJECT_STATE.md, defect D2.
+def _validate_known_keys(feature_vector: dict[str, Any]) -> None:
+    unknown = set(feature_vector.keys()) - _KNOWN_FEATURE_KEYS
+    if unknown:
+        raise ValueError(f"explain_prediction() received unrecognised feature key(s): {sorted(unknown)}")
+
+
+# Assign a verdict band from the fused probability (invariant #5: thresholds require a new ADR to change).
+def _label_for(probability: float) -> str:
+    if probability > 0.70:
+        return "phishing"
+    if probability >= 0.40:
+        return "suspicious"
+    return "legitimate"
+
+
+# Fuse a base probability with browser-signal contributions, merge+rank all attributions, and pad
+# to 3 reasons if neither the base score nor the signals produced enough. Shared by both the SHAP
+# path and the heuristic fallback path, so fusion (claim C2) applies no matter which produced the
+# base score — this is what lets the fusion acceptance test run today, ahead of Sprint 1.5's retrain.
+def _finalize(base_score: float, base_reasons: list[dict[str, Any]],
+              feature_vector: dict[str, Any]) -> dict[str, Any]:
+    p_fused, fusion_reasons = fuse(base_score, feature_vector)
+
+    reasons = sorted(base_reasons + fusion_reasons, key=lambda r: abs(r["shap_impact"]), reverse=True)[:3]
+    while len(reasons) < 3:
+        reasons.append({
+            "feature": "fallback_reason",
+            "value": None,
+            "shap_impact": 0.0,
+            "human_readable": "No additional strong features were detected.",
+        })
+
+    return {
+        "score": round(p_fused, 4),
+        "confidence_pct": round(p_fused * 100),
+        "label": _label_for(p_fused),
+        "top_reasons": reasons,
+    }
+
+
+# Fallback heuristic prediction when the trained model or SHAP is unavailable (development only).
+def _simple_rule_prediction(feature_vector: dict[str, Any]) -> tuple[float, list[dict[str, Any]]]:
     score = 0.05
     reasons: list[dict[str, Any]] = []
     if feature_vector.get("has_ip_address", 0) == 1:
@@ -118,29 +169,7 @@ def _simple_rule_prediction(feature_vector: dict[str, Any]) -> dict[str, Any]:
             "human_readable": format_reason("url_entropy", feature_vector.get("url_entropy"), 0.15),
         })
 
-    score = min(max(score, 0.0), 1.0)
-    if score > 0.70:
-        label = "phishing"
-    elif score >= 0.40:
-        label = "suspicious"
-    else:
-        label = "legitimate"
-
-    reasons = sorted(reasons, key=lambda x: abs(x["shap_impact"]), reverse=True)[:3]
-    while len(reasons) < 3:
-        reasons.append({
-            "feature": "fallback_reason",
-            "value": None,
-            "shap_impact": 0.0,
-            "human_readable": "No additional strong features were detected.",
-        })
-
-    return {
-        "score": round(score, 4),
-        "confidence_pct": round(score * 100),
-        "label": label,
-        "top_reasons": reasons,
-    }
+    return min(max(score, 0.0), 1.0), reasons
 
 
 # Report model load status for GET /health; never raises, unlike explain_prediction().
@@ -160,13 +189,15 @@ def get_model_status() -> dict[str, Any]:
 # Raises ModelUnavailableError unless ESA_ALLOW_FALLBACK=1 (ADR-016) — a serving deployment
 # must never silently degrade to the heuristic fallback.
 def explain_prediction(feature_vector: dict) -> dict:
+    _validate_known_keys(feature_vector)
     allow_fallback = os.getenv("ESA_ALLOW_FALLBACK") == "1"
 
     if not MODEL_PATH.exists() or not COLUMNS_PATH.exists() or not _SHAP_AVAILABLE or not _PANDAS_AVAILABLE:
         if not allow_fallback:
             raise ModelUnavailableError("Trained model or SHAP dependencies are unavailable")
         logger.warning("SHAP model unavailable; using fallback heuristic prediction.")
-        return _simple_rule_prediction(feature_vector)
+        base_score, base_reasons = _simple_rule_prediction(feature_vector)
+        return _finalize(base_score, base_reasons, feature_vector)
 
     try:
         explainer, model, feature_columns = _get_explainer()
@@ -174,38 +205,25 @@ def explain_prediction(feature_vector: dict) -> dict:
         if not allow_fallback:
             raise ModelUnavailableError(f"Unable to load SHAP model: {exc}") from exc
         logger.warning("Unable to load SHAP model: %s", exc)
-        return _simple_rule_prediction(feature_vector)
+        base_score, base_reasons = _simple_rule_prediction(feature_vector)
+        return _finalize(base_score, base_reasons, feature_vector)
 
     row = {col: feature_vector.get(col, -1) for col in feature_columns}
     X = pd.DataFrame([row])
     probability = float(model.predict_proba(X)[0][1])
-
-    if probability > 0.70:
-        label = "phishing"
-    elif probability >= 0.40:
-        label = "suspicious"
-    else:
-        label = "legitimate"
 
     shap_values = explainer.shap_values(X)
     if isinstance(shap_values, list):
         shap_values = shap_values[1]
     shap_values = shap_values[0]
 
-    reasons = []
+    base_reasons = []
     for feature_name, shap_value in zip(feature_columns, shap_values):
-        reasons.append({
+        base_reasons.append({
             "feature": feature_name,
             "value": row[feature_name],
             "shap_impact": float(shap_value),
             "human_readable": format_reason(feature_name, row[feature_name], float(shap_value)),
         })
 
-    reasons = sorted(reasons, key=lambda x: abs(x["shap_impact"]), reverse=True)[:3]
-
-    return {
-        "score": round(probability, 4),
-        "confidence_pct": round(probability * 100),
-        "label": label,
-        "top_reasons": reasons,
-    }
+    return _finalize(probability, base_reasons, feature_vector)

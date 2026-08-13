@@ -47,6 +47,28 @@ class TestSHAP(unittest.TestCase):
                 reason["human_readable"]
             )
 
+    # D2 regression: explain_prediction() previously built its model input row with
+    # {col: vector.get(col, -1) for col in feature_columns}, which silently discarded every key
+    # feature_columns didn't already list — browser signals vanished with no error for weeks.
+    # An unrecognised key must now raise, never disappear.
+    def test_unknown_feature_key_raises(self):
+        with self.assertRaises(ValueError):
+            explain_prediction({"url_length": 10, "this_key_does_not_exist": 1})
+
+    # D2 regression, claim C2: adverse browser signals must move the score, not just ride along
+    # as display strings in flagged_rules while the number underneath stays the same.
+    def test_adverse_browser_signals_raise_the_score(self):
+        clean = {"url_length": 20, "num_digits": 0, "num_special_chars": 0, "has_ip_address": 0,
+                  "subdomain_depth": 0, "has_https": 1, "url_entropy": 3.0, "suspicious_tld_flag": 0}
+        dirty = {**clean, "tracker_count": 40, "has_mixed_content": 1, "redirect_chain_length": 6}
+
+        clean_result = explain_prediction(clean)
+        dirty_result = explain_prediction(dirty)
+
+        self.assertGreater(dirty_result["score"], clean_result["score"])
+        dirty_feature_names = {r["feature"] for r in dirty_result["top_reasons"]}
+        self.assertTrue(dirty_feature_names & {"tracker_count", "has_mixed_content", "redirect_chain_length"})
+
 
 if __name__ == "__main__":
     unittest.main()
