@@ -35,7 +35,14 @@ def main():
     if "label" not in df.columns:
         raise ValueError("features.csv must contain a 'label' column")
 
-    feature_cols = [c for c in df.columns if c not in ("url", "label", "tld")]
+    # VT columns are display-only corroboration, never trained on — they're circular (VT ingests
+    # PhishTank) and constant sentinels outside a live request (ADR-013). submission_time/target
+    # ride along in features.csv for the temporal split (Sprint 2) but aren't features themselves.
+    NON_FEATURE_COLUMNS = (
+        "url", "label", "tld", "submission_time", "target",
+        "domain_age_days", "vt_malicious_votes", "vt_harmless_votes",
+    )
+    feature_cols = [c for c in df.columns if c not in NON_FEATURE_COLUMNS]
     X = df[feature_cols].fillna(-1)
     y = df["label"]
 

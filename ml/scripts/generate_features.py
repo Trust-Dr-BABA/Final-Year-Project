@@ -50,12 +50,16 @@ def main():
     # Convert dictionary column into DataFrame
     feature_df = pd.DataFrame(feature_df.tolist())
 
-    # Combine original data + extracted features
+    # Combine original data + extracted features. submission_time/target ride along for the
+    # temporal split (Sprint 2) rather than being extracted features themselves — train_model.py
+    # excludes them from the trained column set, same as the VT columns (ADR-013).
+    carry_along = [c for c in ("submission_time", "target") if c in df.columns]
     final_df = pd.concat(
         [
             df["url"],
             feature_df,
             df["label"],
+            df[carry_along],
         ],
         axis=1,
     )

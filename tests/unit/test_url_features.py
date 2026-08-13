@@ -3,8 +3,12 @@ test_url_features.py — Unit tests for URL feature extraction.
 All VirusTotal API calls are mocked — no real network calls.
 """
 
+from pathlib import Path
 
-from backend.feature_extractor.url_features import extract_url_features
+import pandas as pd
+import pytest
+
+from backend.feature_extractor.url_features import extract_url_features, get_feature_names
 
 
 PHISHING_URLS = [
@@ -96,3 +100,27 @@ class TestAllFeaturesPresent:
         ]
         for key in expected_keys:
             assert key in features, f"Missing feature key: {key}"
+
+    def test_extract_output_matches_get_feature_names(self):
+        """extract_url_features() must return exactly the keys get_feature_names() promises — the
+        two drifted apart once before (D4: a 12-column manifest against an 8-column features.csv)."""
+        assert set(extract_url_features("https://example.com").keys()) == set(get_feature_names())
+
+
+class TestFeatureColumnParity:
+    """ROADMAP 1.3.3 — features.csv's trained columns must equal get_feature_names() minus the
+    VT columns (ADR-013: VT is display-only corroboration, never trained on). Regenerate with
+    `python ml/scripts/generate_features.py` if this fails after changing the extractor."""
+
+    FEATURES_CSV = Path(__file__).resolve().parents[2] / "ml" / "data" / "processed" / "features.csv"
+    VT_COLUMNS = {"domain_age_days", "vt_malicious_votes", "vt_harmless_votes"}
+    NON_FEATURE_COLUMNS = {"url", "label", "submission_time", "target"}
+
+    def test_features_csv_matches_extractor_minus_vt(self):
+        if not self.FEATURES_CSV.exists():
+            pytest.skip(f"{self.FEATURES_CSV} not generated in this environment")
+
+        csv_columns = set(pd.read_csv(self.FEATURES_CSV, nrows=0).columns)
+        trained_csv_columns = csv_columns - self.NON_FEATURE_COLUMNS - self.VT_COLUMNS
+        expected = set(get_feature_names()) - self.VT_COLUMNS
+        assert trained_csv_columns == expected
