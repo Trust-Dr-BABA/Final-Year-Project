@@ -10,7 +10,7 @@ interface HistoryTableProps {
   scans: Scan[];
 }
 
-type SortKey = "url" | "verdict" | "risk_pct" | "confidence_pct" | "created_at";
+type SortKey = "url" | "verdict" | "risk_pct" | "confidence_pct" | "last_scanned_at";
 
 interface ThProps {
   label: string;
@@ -38,7 +38,7 @@ function Th({ label, sortBy, activeSortKey, sortDesc, onSort }: ThProps) {
 // Client-side sortable table for the current page of results — row click opens the scan detail.
 export function HistoryTable({ scans }: HistoryTableProps) {
   const router = useRouter();
-  const [sortKey, setSortKey] = useState<SortKey>("created_at");
+  const [sortKey, setSortKey] = useState<SortKey>("last_scanned_at");
   const [sortDesc, setSortDesc] = useState(true);
 
   const sorted = useMemo(() => {
@@ -63,7 +63,7 @@ export function HistoryTable({ scans }: HistoryTableProps) {
 
   if (scans.length === 0) {
     return (
-      <p className="text-sm py-8 text-center" style={{ color: "var(--text-muted)" }}>
+      <p data-testid="history-empty-state" className="text-sm py-8 text-center" style={{ color: "var(--text-muted)" }}>
         No scans recorded yet.
       </p>
     );
@@ -80,13 +80,14 @@ export function HistoryTable({ scans }: HistoryTableProps) {
             <Th label="Verdict" sortBy="verdict" {...thProps} />
             <Th label="Risk" sortBy="risk_pct" {...thProps} />
             <Th label="Confidence" sortBy="confidence_pct" {...thProps} />
-            <Th label="Scanned" sortBy="created_at" {...thProps} />
+            <Th label="Last scanned" sortBy="last_scanned_at" {...thProps} />
           </tr>
         </thead>
         <tbody>
           {sorted.map((scan) => (
             <tr
               key={scan.scan_id}
+              data-testid={`history-row-${scan.scan_id}`}
               onClick={() => router.push(`/scan/${scan.scan_id}`)}
               className="border-b cursor-pointer hover:opacity-70 transition-opacity"
               style={{ borderColor: "var(--border)" }}
@@ -104,7 +105,7 @@ export function HistoryTable({ scans }: HistoryTableProps) {
                 {scan.confidence_pct}%
               </td>
               <td className="font-data py-2.5 px-3 text-xs whitespace-nowrap" style={{ color: "var(--text-muted)" }}>
-                {format(new Date(scan.created_at), "MMM d, HH:mm")}
+                {format(new Date(scan.last_scanned_at), "MMM d, HH:mm")}
               </td>
             </tr>
           ))}

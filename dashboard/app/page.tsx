@@ -1,17 +1,33 @@
+import { cookies } from "next/headers";
 import { getStats } from "../lib/api";
 import { PageWrapper } from "../components/layout/PageWrapper";
 import { RiskDistributionChart } from "../components/charts/RiskDistributionChart";
+import { CLIENT_ID_COOKIE } from "../lib/clientId";
 
 export const revalidate = 0;
 
 // A single stat, label above value, no icon/card chrome — denser than a card grid.
-function Stat({ label, value, color }: { label: string; value: string | number; color?: string }) {
+function Stat({
+  label,
+  value,
+  color,
+  testId,
+}: {
+  label: string;
+  value: string | number;
+  color?: string;
+  testId: string;
+}) {
   return (
     <div className="border-t-2 pt-3" style={{ borderColor: color ?? "var(--border)" }}>
       <div className="text-[11px] uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>
         {label}
       </div>
-      <div className="font-data text-3xl font-medium mt-1" style={{ color: color ?? "var(--text)" }}>
+      <div
+        data-testid={testId}
+        className="font-data text-3xl font-medium mt-1"
+        style={{ color: color ?? "var(--text)" }}
+      >
         {value}
       </div>
     </div>
@@ -20,7 +36,8 @@ function Stat({ label, value, color }: { label: string; value: string | number; 
 
 // Server component: fetch aggregate stats and render the dashboard overview.
 export default async function OverviewPage() {
-  const stats = await getStats();
+  const clientId = (await cookies()).get(CLIENT_ID_COOKIE)?.value;
+  const stats = await getStats(clientId);
 
   return (
     <PageWrapper>
@@ -35,10 +52,10 @@ export default async function OverviewPage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
-          <Stat label="Total scans" value={stats.total_scans} />
-          <Stat label="Phishing" value={stats.phishing_count} color="var(--phishing)" />
-          <Stat label="Suspicious" value={stats.suspicious_count} color="var(--suspicious)" />
-          <Stat label="Legitimate" value={stats.legitimate_count} color="var(--safe)" />
+          <Stat label="Total scans" value={stats.total_scans} testId="stat-total-scans" />
+          <Stat label="Phishing" value={stats.phishing_count} color="var(--phishing)" testId="stat-phishing" />
+          <Stat label="Suspicious" value={stats.suspicious_count} color="var(--suspicious)" testId="stat-suspicious" />
+          <Stat label="Legitimate" value={stats.legitimate_count} color="var(--safe)" testId="stat-legitimate" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -47,11 +64,13 @@ export default async function OverviewPage() {
               Verdict distribution
             </h2>
             {stats.total_scans === 0 ? (
-              <p className="text-sm mt-8 mb-8 text-center" style={{ color: "var(--text-muted)" }}>
-                No scans recorded yet. Load the extension and browse to start scanning.
+              <p data-testid="overview-empty-state" className="text-sm mt-8 mb-8 text-center" style={{ color: "var(--text-muted)" }}>
+                {clientId
+                  ? "No scans recorded yet. Browse to a page with the extension loaded to start scanning."
+                  : "Open this dashboard from the extension popup's \"Open Dashboard\" link to see your own scan history."}
               </p>
             ) : (
-              <div className="mt-4">
+              <div className="mt-4" data-testid="risk-distribution-chart">
                 <RiskDistributionChart
                   phishingCount={stats.phishing_count}
                   suspiciousCount={stats.suspicious_count}
@@ -70,7 +89,7 @@ export default async function OverviewPage() {
                 Mean decisiveness across all scans — how sure the model was, either direction
                 (ADR-015). Not the same quantity as average risk.
               </p>
-              <div className="font-data text-4xl font-medium mt-6" style={{ color: "var(--accent)" }}>
+              <div data-testid="stat-avg-confidence" className="font-data text-4xl font-medium mt-6" style={{ color: "var(--accent)" }}>
                 {stats.avg_confidence_pct}%
               </div>
             </div>

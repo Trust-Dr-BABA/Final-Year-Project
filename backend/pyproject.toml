@@ -24,6 +24,8 @@ dependencies = [
     "httpx==0.27.0",
     # Caching
     "cachetools==5.3.3",
+    # Rate limiting
+    "slowapi==0.1.9",
     # ml/shap_analysis.py imports these on the request path — not optional in a serving container
     "numpy<2",  # shap 0.45.0's compiled extensions use the NumPy 1.x C-API
     "pandas==2.2.2",

@@ -5,6 +5,14 @@
 
 export type Verdict = "phishing" | "suspicious" | "legitimate";
 
+// Single source of truth for verdict → color, previously redefined independently in
+// VerdictBadge, ConfidenceBadge, and the scan detail page's risk bar.
+export const VERDICT_COLOR: Record<Verdict, string> = {
+  phishing: "var(--phishing)",
+  suspicious: "var(--suspicious)",
+  legitimate: "var(--safe)",
+};
+
 export interface ShapReason {
   feature: string;
   value: number | boolean | string | null;
@@ -24,6 +32,13 @@ export interface PermissionSignals {
   rule_flags?: string[];
 }
 
+export interface ScamContentSignals {
+  scam_keyword_hits?: number;
+  matched_phrases?: string[];
+  sensitive_field_count?: number;
+  sensitive_field_categories?: string[];
+}
+
 export interface Scan {
   scan_id: string;
   url: string;
@@ -34,10 +49,11 @@ export interface Scan {
   url_features?: Record<string, number | string | boolean>;
   network_signals?: NetworkSignals;
   permission_signals?: PermissionSignals;
+  scam_content_signals?: ScamContentSignals;
   shap_values?: ShapReason[];
-  top_reasons?: ShapReason[];
   flagged_rules?: string[];
   created_at: string;
+  last_scanned_at: string;
 }
 
 export interface HistoryResponse {

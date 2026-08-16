@@ -10,10 +10,12 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 
-# Turn browser-collected network/permission signals into rule flags and numeric heuristic features.
+# Turn browser-collected network/permission/page-content signals into rule flags and numeric
+# heuristic features.
 def evaluate(
     network_signals: dict | None,
     permission_signals: dict | None,
+    scam_content_signals: dict | None = None,
 ) -> tuple[list[str], dict[str, Any]]:
     rule_flags: list[str] = []
     heuristic_features: dict[str, Any] = {
@@ -23,6 +25,8 @@ def evaluate(
         "cam_mic_on_first_visit": 0,
         "notification_prompt_on_load": 0,
         "location_on_load": 0,
+        "scam_keyword_hits": 0,
+        "sensitive_field_count": 0,
     }
 
     # ── Network signal features ───────────────────────────────────────────────
@@ -58,6 +62,22 @@ def evaluate(
         if "location_on_load" in triggered:
             rule_flags.append("location_on_load")
             heuristic_features["location_on_load"] = 1
+
+    # ── Page content signal features ──────────────────────────────────────────
+    if scam_content_signals:
+        scam_keyword_hits = scam_content_signals.get("scam_keyword_hits", 0)
+        sensitive_field_count = scam_content_signals.get("sensitive_field_count", 0)
+        heuristic_features["scam_keyword_hits"] = scam_keyword_hits
+        heuristic_features["sensitive_field_count"] = sensitive_field_count
+
+        # >=3 distinct scam-indicator phrases — matches risk_fusion.py's scam_keyword_hits scale.
+        if scam_keyword_hits >= 3:
+            rule_flags.append("scam_language_detected")
+        # >=2 distinct sensitive-field categories on one form — a single password field (ordinary
+        # login) contributes 1 and does not trigger this; matches risk_fusion.py's
+        # sensitive_field_count scale.
+        if sensitive_field_count >= 2:
+            rule_flags.append("multiple_sensitive_fields_requested")
 
     if rule_flags:
         logger.info(f"Heuristics triggered: {rule_flags}")

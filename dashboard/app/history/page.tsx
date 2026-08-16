@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { getHistory } from "../../lib/api";
 import { PageWrapper } from "../../components/layout/PageWrapper";
 import { HistoryTable } from "../../components/HistoryTable";
+import { CLIENT_ID_COOKIE } from "../../lib/clientId";
 
 export const revalidate = 0;
 
@@ -17,7 +19,8 @@ export default async function HistoryPage({
   const page = Math.max(1, Number(pageParam) || 1);
   const offset = (page - 1) * PAGE_SIZE;
 
-  const { scans, total } = await getHistory(PAGE_SIZE, offset);
+  const clientId = (await cookies()).get(CLIENT_ID_COOKIE)?.value;
+  const { scans, total } = await getHistory(PAGE_SIZE, offset, clientId);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
@@ -28,7 +31,9 @@ export default async function HistoryPage({
             History
           </h1>
           <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-            {total} scan{total === 1 ? "" : "s"} recorded. Click a row for the full explanation.
+            {clientId
+              ? `${total} scan${total === 1 ? "" : "s"} recorded. Click a row for the full explanation.`
+              : "Open this dashboard from the extension popup's \"Open Dashboard\" link to see your own scan history."}
           </p>
         </div>
 

@@ -14,33 +14,60 @@ from backend.models.scan import Scan
 router = APIRouter()
 
 
-# List past scans, most recent first, paginated.
+# List past scans for one browser, most recent first, paginated. No client_id means no history —
+# each browser's scans are only ever visible to that same browser, never to an unidentified caller.
 @router.get("/history", summary="List scan history")
 async def get_history(
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
+    client_id: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
 ):
+    if not client_id:
+        return {"scans": [], "total": 0, "limit": limit, "offset": offset}
+
     result = await db.execute(
-        select(Scan).order_by(Scan.created_at.desc()).limit(limit).offset(offset)
+        select(Scan)
+        .where(Scan.client_id == client_id)
+        .order_by(Scan.last_scanned_at.desc())
+        .limit(limit)
+        .offset(offset)
     )
     scans = [scan.to_dict() for scan in result.scalars().all()]
 
-    total = await db.scalar(select(func.count()).select_from(Scan)) or 0
+    total = await db.scalar(
+        select(func.count()).select_from(Scan).where(Scan.client_id == client_id)
+    ) or 0
 
     return {"scans": scans, "total": int(total), "limit": limit, "offset": offset}
 
 
-# Aggregate verdict counts and average confidence across all scans.
+# Aggregate verdict counts and average confidence for one browser's own scans.
 @router.get("/stats", summary="Aggregate scan statistics")
-async def get_stats(db: AsyncSession = Depends(get_db)):
+async def get_stats(client_id: str | None = Query(default=None), db: AsyncSession = Depends(get_db)):
+    empty = {
+        "total_scans": 0,
+        "phishing_count": 0,
+        "suspicious_count": 0,
+        "legitimate_count": 0,
+        "avg_confidence_pct": 0,
+    }
+    if not client_id:
+        return empty
+
     result = await db.execute(
-        select(Scan.verdict, func.count()).group_by(Scan.verdict)
+        select(Scan.verdict, func.count())
+        .where(Scan.client_id == client_id)
+        .group_by(Scan.verdict)
     )
     counts = {verdict: count for verdict, count in result.all()}
 
-    total = await db.scalar(select(func.count()).select_from(Scan)) or 0
-    avg_confidence = await db.scalar(select(func.avg(Scan.confidence_pct))) or 0
+    total = await db.scalar(
+        select(func.count()).select_from(Scan).where(Scan.client_id == client_id)
+    ) or 0
+    avg_confidence = await db.scalar(
+        select(func.avg(Scan.confidence_pct)).where(Scan.client_id == client_id)
+    ) or 0
 
     return {
         "total_scans": int(total),
