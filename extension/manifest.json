@@ -45,6 +45,11 @@
       "js": ["modules/permission_monitor.js"],
       "run_at": "document_start",
       "world": "MAIN"
+    },
+    {
+      "matches": ["<all_urls>"],
+      "js": ["modules/scam_content_scanner.js"],
+      "run_at": "document_idle"
     }
   ],
 

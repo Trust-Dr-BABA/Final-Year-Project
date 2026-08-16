@@ -17,9 +17,9 @@ export async function getClientId() {
   return clientId;
 }
 
-// Send the URL plus collected network/permission signals to the backend and return its verdict.
-// client_id scopes /history and /stats to this browser install (not authentication).
-export async function analyzePage(url, networkSignals, permissionSignals) {
+// Send the URL plus collected network/permission/page-content signals to the backend and return
+// its verdict. client_id scopes /history and /stats to this browser install (not authentication).
+export async function analyzePage(url, networkSignals, permissionSignals, scamContentSignals) {
   const controller = new AbortController();
   const timeoutId = setTimeout(
     () => controller.abort(),
@@ -35,6 +35,7 @@ export async function analyzePage(url, networkSignals, permissionSignals) {
         url,
         network_signals: networkSignals,
         permission_signals: permissionSignals,
+        scam_content_signals: scamContentSignals,
         client_id: clientId,
       }),
       signal: controller.signal,
