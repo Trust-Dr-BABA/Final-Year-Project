@@ -52,9 +52,18 @@ export default defineConfig({
     cwd: "../dashboard",
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    // 120s, not 60s: a cold CI runner (first npm install resolving platform-specific native
+    // binaries, Postgres + the backend already competing for the same 2 CPUs) has less headroom
+    // than a local machine, where this binds and responds in ~1s even on a fully cold .next cache.
+    timeout: 120_000,
+    // Surface next dev's own stdout/stderr in the CI step log on failure — the default is to
+    // swallow it, which is exactly why a first-run timeout like this shipped with no diagnostic
+    // detail beyond "timed out" the first time it happened.
+    stdout: "pipe",
+    stderr: "pipe",
     env: {
       NEXT_PUBLIC_BACKEND_URL: process.env.E2E_BACKEND_URL || "http://localhost:8000",
+      NEXT_TELEMETRY_DISABLED: "1",
     },
   },
 });
