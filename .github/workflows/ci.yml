@@ -28,3 +28,58 @@ jobs:
       - run: npx tsc --noEmit
         working-directory: dashboard
       - run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: fyp_user
+          POSTGRES_PASSWORD: e2e-ci-only
+          POSTGRES_DB: fyp_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U fyp_user -d fyp_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://fyp_user:e2e-ci-only@localhost:5432/fyp_db
+      ESA_ALLOW_FALLBACK: "1" # no trained model is committed to the repo — same fallback tests/conftest.py enables for pytest
+      DASHBOARD_ORIGIN: http://localhost:3100
+      E2E_BACKEND_URL: http://localhost:8000
+      E2E_BASE_URL: http://localhost:3100
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - run: pip install -e "./backend[ml,dev]"
+      - run: alembic -c backend/alembic.ini upgrade head
+      - name: Start backend
+        run: |
+          nohup uvicorn backend.main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/health && exit 0
+            sleep 1
+          done
+          echo "Backend never became healthy:"; cat backend.log; exit 1
+
+      - run: npm install
+      - run: npx playwright install --with-deps chromium
+        working-directory: e2e
+      - run: npm run test:e2e:ci
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 14
