@@ -4,6 +4,7 @@ import sys
 import asyncio
 
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
@@ -14,7 +15,11 @@ sys.path.insert(
     os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 )
 
-from backend.database import Base
+# Same as backend/main.py: must run before backend.database's module-level os.environ[...] read
+# below, since a bare `alembic` CLI invocation (unlike uvicorn) never goes through main.py.
+load_dotenv()
+
+from backend.database import Base, DATABASE_URL
 from backend.models.scan import Scan  # noqa: F401
 
 
@@ -31,16 +36,10 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
-# Get DATABASE_URL from environment
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    DATABASE_URL = (
-        "postgresql+asyncpg://"
-        "fyp_user:fyp_password@localhost:5432/fyp_db"
-    )
-
-# Give Alembic the database URL
+# Reuse database.py's DATABASE_URL rather than re-reading the env var here — that's the one
+# source of truth for it, and it already fails loudly (os.environ[...], no default) if unset.
+# A second, independent os.getenv(...) with its own hardcoded fallback used to live here, which
+# had drifted back to a weak default password after database.py's own fallback was removed.
 config.set_main_option(
     "sqlalchemy.url",
     DATABASE_URL.replace("%", "%%")

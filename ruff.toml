@@ -5,6 +5,7 @@ extend-exclude = [".venv", "node_modules", "dashboard/.next"]
 [lint.per-file-ignores]
 # load_dotenv() must run before the module-level os.getenv() calls in these imports.
 "backend/main.py" = ["E402"]
+"backend/alembic/env.py" = ["E402"]
 # sys.path must be extended before the local import that depends on it.
 "ml/scripts/generate_features.py" = ["E402"]
 "ml/scripts/audit_dataset.py" = ["E402"]

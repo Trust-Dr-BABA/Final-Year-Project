@@ -8,7 +8,9 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://fyp_user:fyp_password@localhost:5432/fyp_db")
+# No hardcoded fallback (ADR-016 "fail loudly" — a silent weak-credential default is worse than a
+# startup crash: it lets a misconfigured deployment connect with a documented, guessable password).
+DATABASE_URL = os.environ["DATABASE_URL"]
 
 engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 
