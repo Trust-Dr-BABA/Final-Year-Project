@@ -58,7 +58,7 @@ FEATURES_PATH = BASE_DIR / "data" / "processed" / "features.csv"
 REPORT_PATH = BASE_DIR / "reports" / "evaluation_report.md"
 
 FEATURE_COLS = [
-    "url_length", "num_digits", "num_special_chars", "subdomain_depth", "has_https",
+    "url_length", "digit_ratio", "num_special_chars", "subdomain_depth", "has_https",
     "url_entropy", "has_ip_address", "suspicious_tld_flag", "brand_impersonation",
 ]
 RANDOM_STATE = 42
@@ -72,7 +72,9 @@ def registrable_domain(url: str) -> str:
 
 # Split the phishing class by submission_time (earlier -> train) and the benign class randomly in
 # matching proportion, since benign rows carry no submission timestamp (see module docstring).
-def temporal_split(df: pd.DataFrame, test_frac: float = 0.2) -> tuple[pd.DataFrame, pd.DataFrame]:
+def temporal_split(
+    df: pd.DataFrame, test_frac: float = 0.2, random_state: int = RANDOM_STATE
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     phishing = df[df["label"] == 1].copy()
     benign = df[df["label"] == 0].copy()
 
@@ -81,7 +83,10 @@ def temporal_split(df: pd.DataFrame, test_frac: float = 0.2) -> tuple[pd.DataFra
     cut = int(len(phishing) * (1 - test_frac))
     phishing_train, phishing_test = phishing.iloc[:cut], phishing.iloc[cut:]
 
-    benign_train = benign.sample(frac=1 - test_frac, random_state=RANDOM_STATE)
+    # The phishing side's chronological cut is fixed by submission_time, not by random_state — a
+    # different seed only re-samples which benign rows (no timestamp to order by) land on each
+    # side, which is exactly the randomisation cross_validate.py's repeated-seed protocol needs.
+    benign_train = benign.sample(frac=1 - test_frac, random_state=random_state)
     benign_test = benign.drop(benign_train.index)
 
     # Benign rows' submission_time is entirely NaT (see module docstring), which triggers a
@@ -89,16 +94,18 @@ def temporal_split(df: pd.DataFrame, test_frac: float = 0.2) -> tuple[pd.DataFra
     # downstream reads submission_time past this point, but silenced so it doesn't clutter CI.
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", category=FutureWarning, message=".*all-NA.*")
-        train = pd.concat([phishing_train, benign_train]).sample(frac=1, random_state=RANDOM_STATE)
-        test = pd.concat([phishing_test, benign_test]).sample(frac=1, random_state=RANDOM_STATE)
+        train = pd.concat([phishing_train, benign_train]).sample(frac=1, random_state=random_state)
+        test = pd.concat([phishing_test, benign_test]).sample(frac=1, random_state=random_state)
     return train, test
 
 
 # Split by registrable domain so no domain's URLs appear on both sides.
-def unseen_domain_split(df: pd.DataFrame, test_frac: float = 0.2) -> tuple[pd.DataFrame, pd.DataFrame]:
+def unseen_domain_split(
+    df: pd.DataFrame, test_frac: float = 0.2, random_state: int = RANDOM_STATE
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     df = df.copy()
     df["_domain"] = df["url"].apply(registrable_domain)
-    domains = df["_domain"].drop_duplicates().sample(frac=1, random_state=RANDOM_STATE)
+    domains = df["_domain"].drop_duplicates().sample(frac=1, random_state=random_state)
     cut = int(len(domains) * (1 - test_frac))
     train_domains = set(domains.iloc[:cut])
 
@@ -146,12 +153,12 @@ def eval_logistic_regression(train: pd.DataFrame, test: pd.DataFrame) -> dict[st
 # Same architecture and hyperparameters as train_model.py — the single source of truth for the
 # evaluation model, reused by calibration.py and faithfulness.py so every Sprint 2 measurement
 # concerns the exact same fitted model rather than nominally-similar-but-different ones.
-def fit_xgboost(train: pd.DataFrame) -> XGBClassifier:
+def fit_xgboost(train: pd.DataFrame, random_state: int = RANDOM_STATE) -> XGBClassifier:
     X_train, y_train = train[FEATURE_COLS], train["label"]
     pos_weight = (y_train == 0).sum() / (y_train == 1).sum()
     model = XGBClassifier(
         n_estimators=200, max_depth=6, learning_rate=0.1, eval_metric="logloss",
-        scale_pos_weight=pos_weight, random_state=RANDOM_STATE, n_jobs=-1,
+        scale_pos_weight=pos_weight, random_state=random_state, n_jobs=-1,
     )
     model.fit(X_train, y_train, verbose=False)
     return model

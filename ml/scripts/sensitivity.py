@@ -148,19 +148,34 @@ def main() -> None:
         f"| largest \\|F1 change\\|: {max(abs(r[2]) for r in per_weight_changes):+.4f} |"
     )
     lines.append("")
+
+    double_changed, double_total = next((c, t) for n, c, t, _ in rows if n == "All weights x2.0")
+    double_pct = double_changed / double_total
+    quarter_pcts = [c / len(test) for _n, c, _f1 in per_weight_changes]
+    quarter_lo, quarter_hi = min(quarter_pcts), max(quarter_pcts)
+    signals_exercised = sorted(
+        name for name in risk_fusion.SIGNAL_WEIGHTS if name in TYPICAL_PAGE_SIGNALS
+    )
+    signals_untested = sorted(
+        name for name in risk_fusion.SIGNAL_WEIGHTS if name not in TYPICAL_PAGE_SIGNALS
+    )
     lines.append(
         "F1 moves by a few hundredths even under the largest perturbation (weights x2.0), because "
         "the browser-signal profile is identical across every URL and so shifts every fused score "
         "by a similar amount — it barely reorders which URLs rank above or below the 0.5 "
         "threshold, which is what F1 there depends on. Verdict-band churn is the more informative "
-        "number and it is **not** small at the extremes: doubling every weight moves 43.9% of "
-        "URLs across a risk-band boundary, because a large fraction of this test set sits near the "
-        "0.40/0.70 boundaries already and a uniform log-odds shift is enough to tip them. This is "
-        "a genuine sensitivity, not a null result, and it is the argument for why the shipped "
-        "weights (`ml/reports/fusion_weights.md`) are set conservatively rather than aggressively: "
-        "at the shipped magnitude and a +/-25% perturbation around it, churn stays in the 9-24% "
-        "range on this synthetic uniform-signal test rather than the 44% seen at 2x, so the "
-        "specific values chosen matter less than keeping the overall magnitude moderate."
+        f"number: doubling every weight moves {double_pct:.1%} of URLs across a risk-band boundary, "
+        "because a share of this test set sits near the 0.40/0.70 boundaries already and a uniform "
+        "log-odds shift is enough to tip them. This is a genuine sensitivity, not a null result, and "
+        "it is the argument for why the shipped weights (`ml/reports/fusion_weights.md`) are set "
+        "conservatively rather than aggressively: at the shipped magnitude and a +/-25% perturbation "
+        f"around it, per-weight churn stays in the {quarter_lo:.1%}-{quarter_hi:.1%} range on this "
+        f"synthetic uniform-signal test, well below the {double_pct:.1%} seen at 2x, so the specific "
+        "values chosen matter less than keeping the overall magnitude moderate. **Coverage caveat:** "
+        f"the fixed \"typical page\" profile only sets {', '.join(signals_exercised)}, so this "
+        f"particular run does not exercise {', '.join(signals_untested)} — their +/-25% and x0.5/x2.0 "
+        "rows above are correspondingly 0, not evidence those weights are insensitive, only that this "
+        "synthetic profile never triggers them."
     )
     lines.append("")
 
