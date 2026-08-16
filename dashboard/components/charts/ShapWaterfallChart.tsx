@@ -2,7 +2,7 @@
 
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ShapReason } from "../../lib/types";
-import { useCssVar } from "../../lib/useCssVar";
+import { useChartColors } from "../../lib/useChartColors";
 
 interface ShapWaterfallChartProps {
   reasons: ShapReason[];
@@ -13,12 +13,7 @@ interface ShapWaterfallChartProps {
 // here — both are additive log-odds contributions (ADR-014), so nothing in this chart needs to
 // know which family produced a given bar.
 export function ShapWaterfallChart({ reasons }: ShapWaterfallChartProps) {
-  const phishing = useCssVar("--phishing", "#b91c1c");
-  const safe = useCssVar("--safe", "#15803d");
-  const text = useCssVar("--text", "#1a1917");
-  const textMuted = useCssVar("--text-muted", "#6b6860");
-  const border = useCssVar("--border", "#ddd9d0");
-  const bgRaised = useCssVar("--bg-raised", "#ffffff");
+  const { phishing, safe, text, textMuted, border, bgRaised } = useChartColors();
 
   if (reasons.length === 0) {
     return (
@@ -52,8 +47,17 @@ export function ShapWaterfallChart({ reasons }: ShapWaterfallChartProps) {
         />
         <Tooltip
           cursor={{ fill: border, opacity: 0.3 }}
-          contentStyle={{ background: bgRaised, border: `1px solid ${border}`, borderRadius: 3, fontSize: 12, maxWidth: 280 }}
+          contentStyle={{
+            background: bgRaised,
+            border: `1px solid ${border}`,
+            borderRadius: 3,
+            fontSize: 12,
+            maxWidth: 280,
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+          }}
           labelStyle={{ color: text }}
+          itemStyle={{ color: text }}
           formatter={(value) => [typeof value === "number" ? value.toFixed(3) : String(value), "log-odds impact"]}
           labelFormatter={(_, payload) => payload?.[0]?.payload?.full ?? ""}
         />

@@ -1,7 +1,7 @@
 "use client";
 
 import { Bar, BarChart, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { useCssVar } from "../../lib/useCssVar";
+import { useChartColors } from "../../lib/useChartColors";
 
 interface RiskDistributionChartProps {
   phishingCount: number;
@@ -15,13 +15,7 @@ export function RiskDistributionChart({
   suspiciousCount,
   legitimateCount,
 }: RiskDistributionChartProps) {
-  const safe = useCssVar("--safe", "#15803d");
-  const suspicious = useCssVar("--suspicious", "#a3540c");
-  const phishing = useCssVar("--phishing", "#b91c1c");
-  const text = useCssVar("--text", "#1a1917");
-  const textMuted = useCssVar("--text-muted", "#6b6860");
-  const border = useCssVar("--border", "#ddd9d0");
-  const bgRaised = useCssVar("--bg-raised", "#ffffff");
+  const { safe, suspicious, phishing, text, textMuted, border, bgRaised } = useChartColors();
 
   const data = [
     { name: "Legitimate", count: legitimateCount, color: safe },
@@ -43,8 +37,17 @@ export function RiskDistributionChart({
         />
         <Tooltip
           cursor={{ fill: border, opacity: 0.3 }}
-          contentStyle={{ background: bgRaised, border: `1px solid ${border}`, borderRadius: 3, fontSize: 12 }}
+          contentStyle={{
+            background: bgRaised,
+            border: `1px solid ${border}`,
+            borderRadius: 3,
+            fontSize: 12,
+            maxWidth: 200,
+            whiteSpace: "normal",
+            wordBreak: "break-word",
+          }}
           labelStyle={{ color: text }}
+          itemStyle={{ color: text }}
         />
         <Bar dataKey="count" radius={[0, 2, 2, 0]} barSize={22}>
           {data.map((entry) => (
