@@ -78,16 +78,23 @@ async def get_stats(client_id: str | None = Query(default=None), db: AsyncSessio
     }
 
 
-# Fetch one scan's full detail by id, or 404 if it doesn't exist.
+# Fetch one scan's full detail by id, scoped to the caller's client_id, or 404 if it doesn't exist
+# or belongs to a different browser. client_id is required (not optional, unlike /history and
+# /stats) — a scan detail page is reachable from a shared/leaked link, so there is no safe "return
+# everything" default the way an empty history list is.
 @router.get("/scan/{scan_id}", summary="Get single scan detail")
-async def get_scan(scan_id: str, db: AsyncSession = Depends(get_db)):
+async def get_scan(
+    scan_id: str,
+    client_id: str = Query(...),
+    db: AsyncSession = Depends(get_db),
+):
     try:
         scan_uuid = uuid.UUID(scan_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid scan_id")
 
     scan = await db.get(Scan, scan_uuid)
-    if not scan:
+    if not scan or scan.client_id != client_id:
         raise HTTPException(status_code=404, detail="Scan not found")
 
     return scan.to_dict()
