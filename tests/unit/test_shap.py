@@ -22,7 +22,7 @@ class TestSHAP(unittest.TestCase):
 
         sample = {
             "url_length": 120,
-            "num_digits": 8,
+            "digit_ratio": 0.0667,
             "num_special_chars": 14,
             "has_ip_address": 0,
             "subdomain_depth": 2,
@@ -62,7 +62,7 @@ class TestSHAP(unittest.TestCase):
     # D2 regression, claim C2: adverse browser signals must move the score, not just ride along
     # as display strings in flagged_rules while the number underneath stays the same.
     def test_adverse_browser_signals_raise_the_score(self):
-        clean = {"url_length": 20, "num_digits": 0, "num_special_chars": 0, "has_ip_address": 0,
+        clean = {"url_length": 20, "digit_ratio": 0.0, "num_special_chars": 0, "has_ip_address": 0,
                   "subdomain_depth": 0, "has_https": 1, "url_entropy": 3.0, "suspicious_tld_flag": 0}
         dirty = {**clean, "tracker_count": 40, "has_mixed_content": 1, "redirect_chain_length": 6}
 
@@ -78,7 +78,7 @@ class TestSHAP(unittest.TestCase):
     # >= 50 regardless of verdict — a legitimate page and a phishing page can each be reported as
     # confidently classified, and the popup should never need to compute `100 - confidence`.
     def test_risk_and_confidence_are_separate_quantities(self):
-        low_risk = {"url_length": 20, "num_digits": 0, "num_special_chars": 0, "has_ip_address": 0,
+        low_risk = {"url_length": 20, "digit_ratio": 0.0, "num_special_chars": 0, "has_ip_address": 0,
                     "subdomain_depth": 0, "has_https": 1, "url_entropy": 3.0, "suspicious_tld_flag": 0}
         result = explain_prediction(low_risk)
 

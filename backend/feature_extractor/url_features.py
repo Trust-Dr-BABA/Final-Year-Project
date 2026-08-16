@@ -131,7 +131,12 @@ def extract_url_features(url: str, vt_data: dict | None = None) -> dict[str, Any
 
     # ── Lexical features ──────────────────────────────────────────────────────
     features["url_length"] = len(url)
-    features["num_digits"] = sum(c.isdigit() for c in url)
+    # digit_ratio, not a raw digit count (LIMITATIONS.md, since fixed 2026-08-15): a raw count let
+    # one incidental digit in a long URL (e.g. a version number in a path segment) carry the same
+    # weight as a URL that's mostly digits, which is what actually happened on
+    # docs.python.org/3/library/asyncio.html in the 30-URL live run. Density relative to length is
+    # the thing that's actually unusual about a URL like "192-168-1-1-login-verify.tk".
+    features["digit_ratio"] = round(sum(c.isdigit() for c in url) / max(len(url), 1), 4)
     features["num_special_chars"] = sum(c in SPECIAL_CHARS for c in url)
     features["subdomain_depth"] = hostname.count(".") - 1 if hostname else 0
     features["has_https"] = int(url.startswith("https://"))
@@ -184,7 +189,7 @@ def extract_url_features(url: str, vt_data: dict | None = None) -> dict[str, Any
 def get_feature_names() -> list[str]:
     return [
         "url_length",
-        "num_digits",
+        "digit_ratio",
         "num_special_chars",
         "subdomain_depth",
         "has_https",

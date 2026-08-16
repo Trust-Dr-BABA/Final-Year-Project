@@ -31,14 +31,14 @@ TEMPLATES: dict = _load_templates()
 # is a faithfulness problem in the presentation layer, not just an awkward sentence.
 _RISK_INCREASING_TEMPLATES = {
     "url_length": "URL is unusually long ({value} characters)",
-    "num_digits": "URL contains {value} digit characters, which is unusual",
+    "digit_ratio": "Digit density in the URL ({value}) pushed this assessment toward higher risk",
     "num_special_chars": "URL contains {value} special characters often used in obfuscation",
     "subdomain_depth": "URL has {value} subdomain levels, which is unusually deep",
     "url_entropy": "URL string randomness score is high ({value}), suggesting generated text",
 }
 _RISK_DECREASING_TEMPLATES = {
     "url_length": "URL length ({value} characters) is unremarkable",
-    "num_digits": "URL contains few digit characters ({value}), which is typical",
+    "digit_ratio": "Digit density in the URL ({value}) is low, which is typical",
     "num_special_chars": "URL contains few special characters ({value}), which is typical",
     "subdomain_depth": "URL has a shallow subdomain structure ({value} level(s))",
     "url_entropy": "URL string randomness score is low ({value}), consistent with readable text",

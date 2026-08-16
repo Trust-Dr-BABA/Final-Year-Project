@@ -1,6 +1,6 @@
 [
   "url_length",
-  "num_digits",
+  "digit_ratio",
   "num_special_chars",
   "subdomain_depth",
   "has_https",

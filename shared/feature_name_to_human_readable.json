@@ -1,6 +1,6 @@
 {
   "url_length":                "URL is unusually long ({value} characters)",
-  "num_digits":                "URL contains {value} digit characters, which is unusual",
+  "digit_ratio":               "{value} of the URL's characters are digits",
   "num_special_chars":         "URL contains {value} special characters often used in obfuscation",
   "subdomain_depth":           "URL has {value} subdomain levels, which is unusually deep",
   "tld":                       "Top-level domain is {value}",

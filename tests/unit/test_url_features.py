@@ -130,7 +130,7 @@ class TestAllFeaturesPresent:
         """Ensure all expected feature keys are present in output."""
         features = extract_url_features("https://example.com")
         expected_keys = [
-            "url_length", "num_digits", "num_special_chars", "subdomain_depth",
+            "url_length", "digit_ratio", "num_special_chars", "subdomain_depth",
             "has_https", "url_entropy", "has_ip_address", "suspicious_tld_flag",
             "brand_impersonation", "domain_age_days", "vt_malicious_votes", "vt_harmless_votes",
         ]
