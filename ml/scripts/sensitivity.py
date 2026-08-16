@@ -60,6 +60,12 @@ def _band(p: float) -> str:
 
 # Fuse every p_url in the test set under a given weight table, returning fused probabilities.
 def _fuse_all(p_urls: pd.Series, weights: dict) -> list[float]:
+    # Snapshot before touching the global at all — a caller passing risk_fusion.SIGNAL_WEIGHTS
+    # itself (the baseline call below does exactly this) means `weights` and
+    # risk_fusion.SIGNAL_WEIGHTS are the *same object*; clearing the global would silently clear
+    # `weights` too, and every "baseline" call would fuse with zero signal weights instead of the
+    # shipped ones.
+    weights = dict(weights)
     original = dict(risk_fusion.SIGNAL_WEIGHTS)
     risk_fusion.SIGNAL_WEIGHTS.clear()
     risk_fusion.SIGNAL_WEIGHTS.update(weights)
