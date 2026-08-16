@@ -47,6 +47,19 @@ SIGNAL_WEIGHTS: dict[str, tuple[float, Callable[[float], float]]] = {
     "cam_mic_on_first_visit": (2.0, _identity),
     "notification_prompt_on_load": (0.8, _identity),
     "location_on_load": (1.5, _identity),
+    # Scale matches heuristics_engine.py's own scam_language_detected threshold (>=3), same
+    # convention as tracker_count/redirect_chain_length. Weighted below cam_mic_on_first_visit
+    # deliberately: an OS-level permission API call is unambiguous, but page-text phrase matching
+    # is noisier — legitimate banking/e-commerce pages genuinely use urgent security language
+    # ("verify your identity", "your account may be suspended") for real reasons, so a handful of
+    # incidental matches must stay a weak signal, not a strong one.
+    "scam_keyword_hits": (1.8, _saturating(3.0)),
+    # Scale matches heuristics_engine.py's own multiple_sensitive_fields_requested threshold (>=2
+    # distinct categories — a single password field, the ordinary login-page case, contributes
+    # zero). Weighted the same as scam_keyword_hits rather than as strongly as cam_mic_on_first_visit:
+    # both are DOM/content-based signals without real-world labelled validation data behind them,
+    # unlike an OS-level permission API call, which is unambiguous by construction.
+    "sensitive_field_count": (1.8, _saturating(2.0)),
 }
 
 

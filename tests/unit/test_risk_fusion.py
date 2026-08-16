@@ -23,6 +23,16 @@ class TestFuseIncreasesRisk:
         dirty, _ = fuse(0.2, {"has_mixed_content": 1})
         assert dirty > clean
 
+    def test_scam_keyword_hits_increases_score(self):
+        clean, _ = fuse(0.2, {"scam_keyword_hits": 0})
+        dirty, _ = fuse(0.2, {"scam_keyword_hits": 5})
+        assert dirty > clean
+
+    def test_sensitive_field_count_increases_score(self):
+        clean, _ = fuse(0.2, {"sensitive_field_count": 0})
+        dirty, _ = fuse(0.2, {"sensitive_field_count": 3})
+        assert dirty > clean
+
     def test_combined_signals_increase_score_more_than_any_one_alone(self):
         base, _ = fuse(0.2, {})
         one_signal, _ = fuse(0.2, {"tracker_count": 40})

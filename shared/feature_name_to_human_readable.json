@@ -12,6 +12,8 @@
   "domain_age_days":           "Domain was registered only {value} days ago",
   "vt_malicious_votes":        "{value} security vendors have flagged this domain as malicious",
   "vt_harmless_votes":         "{value} security vendors have verified this domain as safe",
+  "scam_keyword_hits":         "Page text contains {value} phrases commonly used in scams (urgency, credential or payment requests)",
+  "sensitive_field_count":     "Page has {value} form fields requesting sensitive information (password, card number, or similar)",
   "tracker_count":             "{value} third-party tracking scripts were loaded on this page",
   "has_mixed_content":         "Page loads insecure (HTTP) resources inside a secure (HTTPS) page",
   "redirect_chain_length":     "URL passed through {value} redirects before reaching this page",
