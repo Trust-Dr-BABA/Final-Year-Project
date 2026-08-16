@@ -1,10 +1,15 @@
 /**
  * popup.js — Extension popup controller
  * Reads the cached analysis result for the current tab and renders
- * the correct state: scanning / safe / suspicious / phishing / error.
+ * the correct state: scanning / safe / suspicious / phishing / error / local.
  */
 
 import ESA_CONFIG from "../config.js";
+import { getClientId } from "../services/api_client.js";
+
+// Shared between render() and the storage-change listener, and read at click time by the retry
+// button so its own listener doesn't need to be re-attached on every render.
+let currentTab = null;
 
 // ── DOM helpers ────────────────────────────────────────────────────────────
 
@@ -42,12 +47,40 @@ function initThemeToggle() {
   });
 }
 
+// Wire the footer "Open Dashboard" link once, independent of which state panel is showing —
+// it depends on neither `tab` nor `entry`, so it must not live inside a state branch that returns
+// early (scanning/error/local previously left it dead).
+function initDashboardLink() {
+  document.getElementById("btn-dashboard")?.addEventListener("click", async () => {
+    const clientId = await getClientId();
+    const url = new URL(ESA_CONFIG.DASHBOARD_URL);
+    url.searchParams.set("client_id", clientId);
+    chrome.tabs.create({ url: url.toString() });
+  });
+}
+
+// Wire "Retry" once too, same reasoning as the dashboard link — reads currentTab at click time
+// rather than closing over a stale tab captured whenever the error state last rendered, so it
+// can't accumulate duplicate listeners across re-renders (previously re-attached on every render()
+// call that hit the error branch).
+function initRetryButton() {
+  document.getElementById("btn-retry")?.addEventListener("click", () => {
+    if (!currentTab) return;
+    chrome.runtime.sendMessage({ type: "RETRY_SCAN", payload: { tabId: currentTab.id, url: currentTab.url } });
+    showState("state-scanning");
+  });
+}
+
 // ── Main render ────────────────────────────────────────────────────────────
 
 // Load the current tab's cached scan result from storage and render the matching popup state.
+// Safe to call repeatedly — a chrome.storage.onChanged listener re-invokes this while the popup
+// stays open, so a scan that finishes after the popup was opened is reflected live instead of
+// only on next open.
 async function render() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (!tab) return;
+  currentTab = tab;
 
   const stored = await chrome.storage.local.get([String(tab.id)]);
   const entry = stored[String(tab.id)];
@@ -57,14 +90,14 @@ async function render() {
     return;
   }
 
+  if (entry.status === "local") {
+    showState("state-local");
+    return;
+  }
+
   if (entry.status === "error") {
     showState("state-error");
     setTextById("error-message", entry.error_message || "Unknown error occurred.");
-
-    document.getElementById("btn-retry")?.addEventListener("click", () => {
-      chrome.runtime.sendMessage({ type: "RETRY_SCAN", payload: { tabId: tab.id, url: tab.url } });
-      showState("state-scanning");
-    });
     return;
   }
 
@@ -92,13 +125,19 @@ async function render() {
     showState("state-safe");
     setTextById("safe-confidence", `${confidencePct}% confident this page is safe`);
   }
-
-  // Dashboard link (always visible in footer)
-  document.getElementById("btn-dashboard")?.addEventListener("click", () => {
-    chrome.tabs.create({ url: ESA_CONFIG.DASHBOARD_URL });
-  });
 }
 
 // Run on popup open
 initThemeToggle();
+initDashboardLink();
+initRetryButton();
 render();
+
+// Live-update while the popup stays open — otherwise a scan that was still "scanning" when the
+// popup opened only ever reflects its final result if the user closes and reopens it.
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (areaName !== "local" || !currentTab) return;
+  if (Object.prototype.hasOwnProperty.call(changes, String(currentTab.id))) {
+    render();
+  }
+});
