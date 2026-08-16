@@ -24,16 +24,22 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /usr/sbin/nologin appuser
 
 # Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy only the runtime code and data shared with it.
-COPY backend /app/backend
-COPY ml /app/ml
-COPY shared /app/shared
+# Copy only the runtime code and data shared with it, owned by the non-root user that runs it —
+# running as root inside the container widens the blast radius of any future RCE-class bug for no
+# benefit here (nothing in this image needs root: no privileged ports, no system-level installs at
+# runtime).
+COPY --chown=appuser:appuser backend /app/backend
+COPY --chown=appuser:appuser ml /app/ml
+COPY --chown=appuser:appuser shared /app/shared
+
+USER appuser
 
 EXPOSE 8000
 
