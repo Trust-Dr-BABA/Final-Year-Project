@@ -11,8 +11,8 @@ functional baseline clear and, more usefully, made the gaps concrete. Safe Brows
 decisively but explains almost nothing; academic classifiers explain more but are not deployed
 anywhere a user would encounter them.
 
-The second was the set of browser capabilities available under Manifest V3. Requirements that a
-browser extension cannot satisfy are not requirements, they are wishes, so the `webRequest`,
+The second was the set of browser capabilities available under Manifest V3 [22]. Requirements that a
+browser extension cannot satisfy are not requirements, they are wishes, so the `webRequest` [23],
 `webNavigation` and content-script APIs were surveyed before any behaviour was specified. This
 ruled out several things early — response body inspection, for instance, which MV3 removed.
 
@@ -38,13 +38,15 @@ and to test cases in Chapter 5.
 | **FR-05** | The extension shall record camera, microphone, geolocation and notification requests made before the user has interacted with the page. | Must |
 | **FR-06** | The extension shall persist per-tab signals to extension storage keyed by tab identifier, and shall not rely on service-worker memory surviving between events. | Must |
 | **FR-07** | The system shall not issue any outbound request to the URL under assessment from the server side. | Must |
+| **FR-32** | The extension shall scan the page's own rendered text for multi-word scam-indicator phrases and its form fields for combinations of sensitive-data categories, and shall report a distinct-phrase count and a distinct-category count to the service. | Must |
+| **FR-33** | The extension shall detect navigation to a localhost, loopback, or RFC1918/link-local address before invoking analysis, and shall present a dedicated non-verdict state rather than submitting the address for scoring. | Must |
 
 ### 2.2.2 Assessment
 
 | ID | Requirement | Priority |
 |---|---|---|
-| **FR-08** | The service shall extract lexical features from a submitted URL: length, digit count, special-character count, subdomain depth, scheme security, Shannon entropy, raw-IP-address usage, high-risk top-level domain, and brand impersonation. | Must |
-| **FR-09** | The service shall evaluate rule flags over the submitted browser signals and derive numeric heuristic features from them. | Must |
+| **FR-08** | The service shall extract lexical features from a submitted URL: length, digit density, special-character count, subdomain depth, scheme security, Shannon entropy, raw-IP-address usage, high-risk top-level domain, and brand impersonation. | Must |
+| **FR-09** | The service shall evaluate rule flags over the submitted browser and page-content signals and derive numeric heuristic features from them. | Must |
 | **FR-10** | The service shall score the lexical feature vector with a trained gradient-boosted classifier. | Must |
 | **FR-11** | The service shall combine the classifier output with browser-signal contributions on a single additive scale to produce the final score. | Must |
 | **FR-12** | The service shall assign a verdict of *phishing* above 0.70, *suspicious* between 0.40 and 0.70 inclusive of the lower bound, and *legitimate* below 0.40. | Must |
@@ -69,9 +71,9 @@ and to test cases in Chapter 5.
 | **FR-21** | The extension popup shall present the verdict, a confidence percentage and the ranked reasons. | Must |
 | **FR-22** | The extension shall interrupt the page with a dismissible full-page warning when, and only when, the verdict is *phishing*. | Should |
 | **FR-23** | The popup shall offer a retry when an assessment failed. | Should |
-| **FR-24** | The service shall persist every assessment with its features, signals, attributions and flags. | Must |
-| **FR-25** | The dashboard shall list assessments in reverse chronological order with pagination. | Must |
-| **FR-26** | The dashboard shall present a single assessment in full, including a chart of the ranked contributions. | Must |
+| **FR-24** | The service shall durably persist the most recent assessment of each URL per browser, with its features, signals, attributions and flags, updating an existing record in place when the same browser re-assesses a URL it has already scanned rather than accumulating a duplicate. | Must |
+| **FR-25** | The dashboard shall list assessments in reverse chronological order with pagination, scoped to the requesting browser's client identifier; a request carrying no client identifier shall return an empty list rather than every browser's history. | Must |
+| **FR-26** | The dashboard shall present a single assessment in full, including a chart of the ranked contributions, only to a request whose client identifier matches the assessment's owner; a mismatched or absent identifier shall be reported identically to a non-existent assessment. | Must |
 | **FR-27** | The dashboard shall present aggregate counts by verdict and mean decisiveness. | Should |
 | **FR-28** | The service shall expose a health endpoint reporting model load state, feature count, model digest, reputation-key configuration and database reachability. | Must |
 
@@ -101,6 +103,7 @@ and to test cases in Chapter 5.
 | **NFR-12** | Maintainability | Every merge to the main branch shall pass lint, type-check and the full test suite. | TC-M-01 |
 | **NFR-13** | Portability | The service and its database shall start from a single command on any Docker host. | TC-M-02 |
 | **NFR-14** | Integrity | Every quantitative figure in the evaluation shall come from a recorded execution. | Section 5.2 |
+| **NFR-15** | Privacy | The per-browser client identifier used to scope history and detail requests shall be a locally-generated random value, never a login credential, and shall not itself be treated as an authentication token by any endpoint. | TC-SEC-06 |
 
 ## 2.4 Actors
 
@@ -109,7 +112,7 @@ and to test cases in Chapter 5.
 | **Web User** | Primary, human | To learn whether the page in front of them is dangerous, and why. |
 | **Browser Navigation Event** | Primary, system | Represents the browser signalling that a document has begun or finished loading. Modelling this as an actor is deliberate: assessment is triggered by the browser, not by the user, and the use case model should say so. |
 | **Researcher** | Primary, human | To build, audit and evaluate the detection model, and to verify the deployed system's health. |
-| **VirusTotal API** | Supporting, external | Supplies domain age and vendor votes. |
+| **VirusTotal API** | Supporting, external | Supplies domain age and vendor votes — displayed as corroboration, and, since ADR-017, narrowly and asymmetrically fused into the score. Never a trained model feature (ADR-013). |
 
 The Web User and the Researcher may be the same person, but they are separated because their goals,
 their surfaces and their failure modes have nothing in common.
@@ -136,7 +139,7 @@ retrieval always happens and its output is always displayed.
 | **UC-05** | Browse Scan History | Web User | The user reviews previous assessments in reverse chronological order, paginated. | FR-25 |
 | **UC-06** | View Detailed Scan Report | Web User | The user opens one assessment and sees its full record, including a chart of contributions. | FR-26 |
 | **UC-07** | View Aggregate Statistics | Web User | The user sees counts by verdict and mean decisiveness across all assessments. | FR-27 |
-| **UC-08** | Collect Browser Signals | Browser Navigation Event | Throughout a page load the extension accumulates tracker contacts, mixed-content occurrences, redirect hops and early permission requests, freezing them on completion. | FR-01…FR-06 |
+| **UC-08** | Collect Browser Signals | Browser Navigation Event | Throughout a page load the extension accumulates tracker contacts, mixed-content occurrences, redirect hops and early permission requests, freezing them on completion. A separate isolated-world content script scans the rendered page text and form fields for scam-indicator phrases and sensitive-field combinations on the same page load. | FR-01…FR-06, FR-32 |
 | **UC-09** | Retrieve Domain Reputation | — (included) | The service obtains domain age and vendor votes for the registrable domain, from cache where possible. | FR-13 |
 | **UC-10** | Generate Plain-English Explanation | — (included) | Each contribution is converted into a sentence a non-specialist can read. | FR-16…FR-19 |
 | **UC-11** | Train Detection Model | Researcher | The researcher prepares a corpus, audits it, extracts features, trains a classifier, and writes the artefact with its column manifest. | FR-29, FR-30 |
@@ -358,11 +361,15 @@ than as procedural steps.
 | **Operation** | `pageLoadComplete(tabId : int, url : String)` |
 | **Cross references** | UC-01; FR-06…FR-19, FR-24 |
 | **Preconditions** | The scheme of `url` is `http` or `https`. The extension is enabled for the tab. |
-| **Postconditions** | • The accumulated signals were made durable under a key derived from `tabId` (attribute modification).<br>• A `Scan` instance was created (instance creation).<br>• `Scan.url`, `verdict`, `riskScore`, `confidencePct` and `createdAt` were set (attribute modification).<br>• The `Scan` was associated with one `UrlFeatureSet`, at most one `NetworkSignalSet`, at most one `PermissionSignalSet` and at most one `DomainReputation` (associations formed).<br>• The `Scan` was associated with three or more `Attribution` instances, each carrying a name, a value, a log-odds impact and a rendered sentence (instances created, associations formed).<br>• The `Scan` was associated with zero or more `RuleFlag` instances (associations formed).<br>• The `Scan` was associated with exactly one `Verdict` determined by the band containing `riskScore` (association formed).<br>• The badge state for `tabId` was set from the verdict (attribute modification). |
+| **Postconditions** | • The accumulated signals were made durable under a key derived from `tabId` (attribute modification).<br>• If a `Scan` already exists with the same `clientId` and `url`, its `verdict`, `riskScore`, `riskPct`, `confidencePct`, feature sets and `lastScannedAt` were updated in place (attribute modification); otherwise a new `Scan` instance was created (instance creation) with `clientId` set from the caller. A caller supplying no `clientId` always creates a new instance, since there is no safe way to identify "this same browser's earlier scan" without one.<br>• `Scan.url`, `verdict`, `riskScore`, `riskPct`, `confidencePct` and `createdAt` (on creation) or `lastScannedAt` (on update) were set (attribute modification).<br>• The `Scan` was associated with one `UrlFeatureSet`, at most one `NetworkSignalSet`, at most one `PermissionSignalSet`, at most one `ScamContentSignalSet` and at most one `DomainReputation` (associations formed or updated).<br>• The `Scan` was associated with three or more `Attribution` instances, each carrying a name, a value, a log-odds impact and a rendered sentence (instances created, associations formed).<br>• The `Scan` was associated with zero or more `RuleFlag` instances (associations formed).<br>• The `Scan` was associated with exactly one `Verdict` determined by the band containing `riskScore` (association formed).<br>• The badge state for `tabId` was set from the verdict (attribute modification). |
 
 *Note.* If the model is unavailable and no override is set, none of the above holds: no `Scan` is
-created and the operation fails with 503. A contract that quietly permitted a fabricated `Scan`
-here would misrepresent the system's actual guarantee.
+created or updated and the operation fails with 503. A contract that quietly permitted a fabricated
+`Scan` here would misrepresent the system's actual guarantee. The update-in-place behaviour was
+added after this contract was first written, so that a browser re-checking a URL it has already
+scanned accumulates one current record per URL rather than an unbounded history of identical
+re-scans; FR-24's "persist every assessment" is satisfied by the *latest* assessment always being
+durable, not by every individual re-scan being retained as a separate row.
 
 ### Contract CO-05: requestScanDetail
 
@@ -409,8 +416,14 @@ of the system simple, and it is the reason the design records treat this as a fo
 rather than an implementation detail.
 
 `DomainReputation` is attached by aggregation rather than composition, and no association runs from
-it to `Verdict`. That absence is deliberate and is the diagrammatic expression of FR-13: reputation
-data is held alongside an assessment, not inside the reasoning that produced it.
+it *directly* to `Verdict` — it is never a `DetectionModel` input (ADR-013's training-corpus
+circularity argument, unchanged). That is the diagrammatic expression of FR-13. What the model no
+longer shows, because it changed partway through the project, is "reputation data plays no role in
+the reasoning at all": since ADR-017, two of its fields are read by `FusionWeight` entries under a
+narrowly gated, asymmetric rule (§3.2.6), giving `DomainReputation` a real — if indirect, documented
+and tightly bounded — path to `Verdict` through the same `Attribution` mechanism browser signals
+already used. `ScamContentSignalSet`, added the same period, is a fifth signal family aggregated
+onto `Scan` alongside the network and permission sets, and reaches `Verdict` the same way they do.
 
 ## 2.11 Activity diagrams
 
@@ -449,6 +462,12 @@ minute, the cache is what makes repeat browsing viable at all.
 
 The loop that renders each attribution runs after fusion, not before, so that model contributions
 and browser-signal contributions enter the formatter through the same call.
+
+The final `alt` fragment — query, then update-or-insert — is a later addition to this diagram, added
+alongside multi-browser scoping (§4.7's algorithm notes, CO-04). It replaced an unconditional insert:
+persistence is now keyed by `(clientId, url)` rather than being append-only, which is what makes
+`GET /history` show one current row per URL a browser has visited rather than growing without bound
+across repeat visits to the same page.
 
 ![Figure 2.9 — Communication diagram](diagrams/out/fig-2-9-communication-analyse.png)
 

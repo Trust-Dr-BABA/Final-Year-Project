@@ -23,7 +23,7 @@ class Scan {
 
 class UrlFeatureSet {
   urlLength
-  numDigits
+  digitRatio
   numSpecialChars
   subdomainDepth
   hasHttps
@@ -43,6 +43,13 @@ class NetworkSignalSet {
 class PermissionSignalSet {
   permissionsRequested
   ruleFlags
+}
+
+class ScamContentSignalSet {
+  scamKeywordHits
+  matchedPhrases
+  sensitiveFieldCount
+  sensitiveFieldCategories
 }
 
 class DomainReputation {
@@ -87,12 +94,14 @@ WebPage "1" -- "0..*" Scan : is assessed by >
 Scan "1" *-- "1" UrlFeatureSet : describes >
 Scan "1" *-- "0..1" NetworkSignalSet : observed >
 Scan "1" *-- "0..1" PermissionSignalSet : observed >
+Scan "1" *-- "0..1" ScamContentSignalSet : observed >
 Scan "1" o-- "0..1" DomainReputation : corroborated by >
 Scan "1" *-- "3..*" Attribution : explained by >
 Scan "1" *-- "0..*" RuleFlag : triggered >
 Scan "0..*" --> "1" Verdict : classified as >
 DetectionModel "1" --> "0..*" Attribution : produces >
 FusionWeight "1" --> "0..*" Attribution : produces >
+DomainReputation "0..1" --> "0..*" FusionWeight : read by >
 
 note right of Attribution
   Model attributions and browser-signal
@@ -100,5 +109,16 @@ note right of Attribution
   because both are additive log-odds
   contributions (ADR-014). This is what
   lets a single ranked list mix them.
+end note
+
+note bottom of DomainReputation
+  Never a DetectionModel input (ADR-013:
+  training-corpus circularity). Since
+  ADR-017, its malicious/harmless votes
+  and age ARE read by two FusionWeight
+  entries, narrowly and asymmetrically
+  gated -- so reputation now has a real,
+  documented path to Verdict that did not
+  exist when this model was first drawn.
 end note
 @enduml

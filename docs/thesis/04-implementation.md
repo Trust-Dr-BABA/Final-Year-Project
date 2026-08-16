@@ -4,12 +4,12 @@
 
 | Layer | Selection | Reasoning |
 |---|---|---|
-| Extension | Chrome Manifest V3, vanilla ES modules | MV2 is closed to new extensions. No framework was introduced: the popup has five states and one data source, and a framework would have added a build step and a dependency tree to solve a problem that does not exist here. |
-| Service | Python 3.11, FastAPI 0.111, Uvicorn | The attribution library and the model library are Python-first, so any other choice would have meant a second process and a serialisation boundary on the request path. FastAPI validates at the edge and generates the OpenAPI description without extra work. |
-| Model | XGBoost 2.0.3 | Tabular features, ~20k rows, no GPU. The decisive factor was attribution: `TreeExplainer` is exact for tree ensembles (ADR-002). |
-| Attribution | SHAP 0.45.0 | Exact for the chosen model class; contributions sum to the prediction, which is the property the fusion design depends on. |
-| Persistence | PostgreSQL 15, SQLAlchemy 2.0 async, Alembic | JSONB for variable-length payloads; a mature async driver; versioned migrations. |
-| Dashboard | Next.js 16, React 19, TypeScript strict, Tailwind 4 | Server rendering for the initial view, static typing across the API boundary. |
+| Extension | Chrome Manifest V3 [22], vanilla ES modules | MV2 is closed to new extensions. No framework was introduced: the popup has five states and one data source, and a framework would have added a build step and a dependency tree to solve a problem that does not exist here. |
+| Service | Python 3.11, FastAPI 0.141 [24], Uvicorn | The attribution library and the model library are Python-first, so any other choice would have meant a second process and a serialisation boundary on the request path. FastAPI validates at the edge and generates the OpenAPI description without extra work. |
+| Model | XGBoost 2.0.3 [10] | Tabular features, ~20k rows, no GPU. The decisive factor was attribution: `TreeExplainer` is exact for tree ensembles (ADR-002). |
+| Attribution | SHAP 0.45.0 [8], [9] | Exact for the chosen model class; contributions sum to the prediction, which is the property the fusion design depends on. |
+| Persistence | PostgreSQL 15 [26], SQLAlchemy 2.0 async, Alembic | JSONB for variable-length payloads; a mature async driver; versioned migrations. |
+| Dashboard | Next.js 16 [25], React 19, TypeScript strict, Tailwind 4 | Server rendering for the initial view, static typing across the API boundary. |
 | Container | Docker Compose | One command brings up database and service together (NFR-13). |
 | CI | GitHub Actions | Lint, type-check and tests on every push (NFR-12). |
 
@@ -48,6 +48,14 @@ Mount paths are a real source of error here. An earlier compose file mounted the
 at `/app/models` while the loader read `/app/ml/models`. The artefact was present in the image and
 invisible to the code, which took the silent fallback path described above. Two defects compounding
 in exactly the way ADR-016 was written to prevent.
+
+The service container runs as an unprivileged user created in the image, not as root. Nothing in the
+runtime image needs root — no privileged port, no system-level install after the build stage — so
+running as root would only have widened the blast radius of a future remote-code-execution bug in
+the application or one of its dependencies, for no offsetting benefit. This is ordinary container
+hardening rather than a response to any specific incident, unlike most of what this section
+documents, and is recorded here for the same reason the rest of the deployment configuration is:
+because it changes what a reader of the Dockerfile can assume.
 
 ## 4.3 Algorithms
 
@@ -104,7 +112,7 @@ Output: 1 if a brand appears outside the registrable domain, else 0
 ```
 
 The comparison at line 5 against the registrable label rather than the full hostname is what keeps
-the legitimate case clean. Extracting eTLD+1 correctly requires the Public Suffix List — a naive
+the legitimate case clean. Extracting eTLD+1 correctly requires the Public Suffix List [21] — a naive
 "last two labels" rule mishandles `co.uk`, `com.au` and several hundred other suffixes — so the
 implementation delegates to `tldextract`.
 
@@ -114,7 +122,7 @@ them without evaluating their false-positive cost would have been the wrong orde
 
 ### 4.3.3 Tracker matching
 
-EasyPrivacy rules of the form `||domain^` match the listed domain and every subdomain of it. A
+EasyPrivacy [20] rules of the form `||domain^` match the listed domain and every subdomain of it. A
 request to `ssl.google-analytics.com` must therefore match a `google-analytics.com` entry. Two naive
 implementations are tempting and both are wrong: exact set membership misses every subdomain, and
 scanning the whole list per request is O(|list|) on a hot path that fires for every sub-resource on
@@ -146,12 +154,12 @@ directly into the risk score.
 
 ```
 Algorithm 4.4 — Heuristic evaluation
-Input:  network_signals, permission_signals (either may be absent)
+Input:  network_signals, permission_signals, scam_content_signals (any may be absent)
 Output: flags, a list of rule names; features, a numeric map
 
 1  features ← { tracker_count: 0, has_mixed_content: 0, redirect_chain_length: 0,
 2               cam_mic_on_first_visit: 0, notification_prompt_on_load: 0,
-3               location_on_load: 0 }
+3               location_on_load: 0, scam_keyword_hits: 0, sensitive_field_count: 0 }
 4  flags ← empty list
 5  if network_signals present then
 6      copy tracker_count, has_mixed_content, redirect_chain_length into features
@@ -162,18 +170,27 @@ Output: flags, a list of rule names; features, a numeric map
 11     for each r in {cam_mic_on_first_visit, notification_prompt_on_load, location_on_load} do
 12         if r ∈ permission_signals.rule_flags then
 13             append r to flags;  features[r] ← 1
-14 return flags, features
+14 if scam_content_signals present then
+15     copy scam_keyword_hits, sensitive_field_count into features
+16     if scam_keyword_hits ≥ 3        then append "scam_language_detected"
+17     if sensitive_field_count ≥ 2    then append "multiple_sensitive_fields_requested"
+18 return flags, features
 ```
 
 The function returns both a flag list and a numeric map from one pass. The flags are for display and
 the numeric map feeds fusion; deriving them separately would allow the two to disagree about the
-same page.
+same page. Lines 14–17 were added when the page-content scanner landed (§4.3.7); they follow the
+same shape as the network- and permission-signal branches above them rather than a bespoke path, so
+a fourth signal family would extend this function the same way a third one already did.
 
 The thresholds at lines 7 and 9 are stated in the source rather than tuned. Ten distinct tracker
 base domains is high but not extraordinary for a commercial news site — the measurement recorded in
 Section 5.5.4 found eleven on a major news domain. Three top-level redirects is well beyond what a
-direct navigation requires. Both are documented as judgement calls, and both are inputs to the
-sensitivity analysis in Section 5.9.
+direct navigation requires. The thresholds at lines 16–17 (§4.3.7) match the scale parameters of the
+corresponding fusion weights (Table 4.1) by the same convention. All four are documented as judgement
+calls, and all are candidate inputs to the sensitivity analysis in Section 5.9 — though as §5.12.2's
+coverage caveat states, the two content thresholds are not yet exercised by that analysis's fixed
+synthetic test profile.
 
 ### 4.3.5 Log-odds fusion
 
@@ -210,8 +227,35 @@ the score it accompanies.
 
 The transforms $G_j$ normalise unbounded counts. Tracker count uses a saturating transform so that
 the fortieth tracker adds less than the fifth; redirect depth is treated similarly; the permission
-flags are binary and pass through unchanged. Weights and transforms are tabulated with their
-justification in `ml/reports/fusion_weights.md` and summarised in Appendix C.
+flags are binary and pass through unchanged. Weights and transforms, with their justification, are
+tabulated in full in Table 4.1 and reproduced from `ml/reports/fusion_weights.md`.
+
+**Table 4.1 — Fusion weights and their justification**
+
+| Signal | Transform $g_j$ | Scale | Weight $w_j$ | Odds multiplier at saturation | Justification |
+|---|---|---|---|---|---|
+| `tracker_count` | Saturating, $1-e^{-v/\text{scale}}$ | 10 | **1.5** | ×4.48 | Scale matches `heuristics_engine.py`'s own `excessive_trackers` threshold (>10); a single tracker is weak evidence, since most legitimate commercial sites carry a few |
+| `has_mixed_content` | Identity (binary) | — | **1.0** | ×2.72 | A real construction-quality signal, but common enough on legitimate sites (stale third-party widgets, old CDN links) that it should not dominate alone |
+| `redirect_chain_length` | Saturating | 3 | **1.2** | ×3.32 | Scale matches the `long_redirect_chain` rule threshold (>3); a single redirect is unremarkable (auth flows, short-link services) |
+| `cam_mic_on_first_visit` | Identity (binary) | — | **2.0** | ×7.39 | Camera/microphone access requested before any interaction has essentially no legitimate justification |
+| `notification_prompt_on_load` | Identity (binary) | — | **0.8** | ×2.23 | The weakest weight in the browser-signal group — immediate notification prompts are poor UX but extremely widespread on ordinary sites |
+| `location_on_load` | Identity (binary) | — | **1.5** | ×4.48 | Between the two extremes — precise location on load is unusual outside a narrow set of legitimate use cases (maps, delivery, weather) |
+| `scam_keyword_hits` | Saturating | 3 | **1.8** | ×6.05 | Scale matches `scam_language_detected`'s own threshold (≥3). Weighted below the OS-level permission signals deliberately: page-text phrase matching is noisier than an unambiguous permission-API call — legitimate banking and e-commerce pages genuinely use urgent security language for real reasons |
+| `sensitive_field_count` | Saturating | 2 | **1.8** | ×6.05 | Scale matches `multiple_sensitive_fields_requested`'s own threshold (≥2 distinct categories) — a single password field, the ordinary login-page case, contributes zero. Weighted the same as `scam_keyword_hits`: both are content-based signals without labelled validation data, unlike a permission-API call |
+| `vt_malicious_votes` (ADR-017) | Saturating | 5 | **3.0** | ×20.1 | The highest weight in the table. Several independent vendors actively corroborating malicious intent is credible, unlike a *clean* result — see the asymmetry argument in §3.2.6. Scale of 5 reflects that even a handful of flagging vendors is already close to conclusive |
+
+The established-reputation dampening path (§3.2.6) is not a row in this table because it is not a
+function of one signal: it fires only when `domain_age_days ≥ 365` **and** `vt_malicious_votes = 0`
+**and** `vt_harmless_votes ≥ 10` hold jointly, contributing a fixed weight of **−2.5** through a
+saturating transform of scale 20 on `vt_harmless_votes` when it does. `vt_harmless_votes` is
+otherwise never added to Table 4.1 directly, for the same cold-start reason `vt_malicious_votes` is
+asymmetric with it.
+
+Weights are quoted in log-odds. As a reference point, a weight of 0.69 doubles the odds and a weight
+of 2.20 multiplies them by nine ("odds multiplier at saturation" is $e^{w_j}$). Section 5.12.2
+reports a sensitivity analysis perturbing every weight in this table and measuring how much the
+resulting verdicts move — the honest bound on how much these hand-set values matter, given that no
+corpus exists to fit them as learned coefficients.
 
 ### 4.3.6 Attribution and ranking
 
@@ -243,6 +287,46 @@ line. Section 4.7.2 gives the full account.
 
 Line 9 unions the two attribution families before sorting, so a browser signal outranks a weak model
 feature whenever its contribution is larger. Nothing privileges either source.
+
+### 4.3.7 Scam-content phrase and field matching
+
+Realises FR-32. The content script scans the page's own rendered text and form structure once, a
+short delay after `document_idle`, so that single-page-app frameworks have finished rendering
+content a scan immediately at load would miss.
+
+```
+Algorithm 4.7 — Scam-content signal extraction
+Input:  document, the rendered page DOM;  PHRASES, a list of multi-word scam-indicator phrases;
+        FIELD_PATTERNS, a category -> regex map tested against input name/id/autocomplete
+Output: scam_keyword_hits, the count of distinct matched phrases;
+        sensitive_field_count, the count of distinct matched field categories
+
+1  text ← lowercase(document.body.innerText)
+2  matched ← { p ∈ PHRASES : p occurs in text }
+3  categories ← empty set
+4  for each input in document.querySelectorAll("input") do
+5      if input.type = "password" then categories ← categories ∪ {"password"}
+6      haystack ← lowercase(join(input.name, input.id, input.autocomplete))
+7      for each (category, pattern) in FIELD_PATTERNS do
+8          if pattern matches haystack then categories ← categories ∪ {category}
+9  return |matched|, |categories|
+```
+
+Two design choices keep this signal weak-by-default rather than noisy. First, every entry in
+`PHRASES` is a multi-word combination of urgency and an account, payment or credential action
+(`"verify your account now"`, not `"account"` alone) — single common words appear constantly on
+ordinary banking and e-commerce pages, and the combination is what narrows the match toward scam
+pages specifically. Second, a single password field — the ordinary login-page case — contributes
+exactly one category and does not, on its own, cross `heuristics_engine.py`'s
+`multiple_sensitive_fields_requested` threshold of two; what is unusual is a page requesting several
+high-value categories together (password *and* card number *and* a national ID number, say), which
+ordinary login forms do not do and credential-harvesting pages often do.
+
+This script runs in the default isolated world, unlike `permission_monitor.js` (§4.4.3): reading the
+DOM's already-rendered text does not require intercepting the page's own script calls, only reading
+state the isolated world already shares with the page, so no main-world injection is needed here.
+The two content scripts sit on opposite sides of exactly the boundary that makes the isolated world
+useful for some signals and useless for others.
 
 ## 4.4 Extension implementation
 
@@ -290,6 +374,23 @@ already known at the time of the last assessment and triggers a fresh one only w
 not seen before appears. Both fixes are recorded in Section 4.7 and their residual scope — automated
 coverage exists, but a real-browser confirmation is still outstanding — in Section 6.3.
 
+### 4.4.4 A shared re-trigger path, and why it needs a different gate per signal family
+
+The page-content scanner (§4.3.7) has the same late-arrival problem D8 fixed for permission signals:
+`scam_content_scanner.js` runs on a 2-second delay after `document_idle`, well after the initial
+assessment has already returned. `background.js` re-runs analysis through the same
+`maybeRetriggerAnalysis()` helper both signal families share, but the two paths gate the re-trigger
+differently, because unconditional re-triggering means something different for each. The permission
+path re-triggers only when a rule flag not seen on the previous pass appears — most pages never
+request a permission at all, so "no new flag" is the common case and re-triggering on it would be
+free of purpose. The content-scanner path re-triggers only when it found at least one scam-phrase
+hit or sensitive-field match, for a sharper reason: the scanner posts its result on *every* page
+regardless of outcome (unlike the permission APIs, which only fire when actually called), so an
+unconditional re-trigger here would have doubled the analysis cost of every single page visited,
+the overwhelming majority of which trigger nothing. The shared helper factors out the common
+tail — check the cached result is `"done"`, confirm the tab is still on the same URL, re-run — while
+leaving each caller to decide, on its own terms, whether re-running is actually warranted.
+
 ## 4.5 Service implementation
 
 ### 4.5.1 Validation at the boundary
@@ -301,10 +402,12 @@ key or a negative count.
 
 ### 4.5.2 Reputation client
 
-The client is asynchronous with a five-second timeout and a TTL cache holding 256 entries for one
-hour. Every failure path — absent key, timeout, transport error, unexpected payload shape,
-non-numeric votes — returns the same sentinel triple of −1 values. There is exactly one degraded
-representation, so no consumer has to distinguish a timeout from a missing key.
+The client is asynchronous with a 2.5-second timeout (reduced from 5 seconds once VirusTotal's
+votes started feeding the fused score under ADR-017 — a slow response is now request latency, not
+purely a display delay) and a TTL cache holding 256 entries for one hour. Every failure path —
+absent key, timeout, transport error, unexpected payload shape, non-numeric votes — returns the
+same sentinel triple of −1 values. There is exactly one degraded representation, so no consumer has
+to distinguish a timeout from a missing key.
 
 The sentinel is −1 rather than `null` or 0 because these fields are numeric on the wire and 0 is a
 meaningful value: zero malicious votes is a real, and reassuring, observation. Conflating "no vendor
@@ -317,6 +420,28 @@ guaranteed not to raise. A health check that can itself fail is not a health che
 returns a negative report rather than propagating a load error, and `check_db_reachable` executes
 `SELECT 1` inside a try block.
 
+### 4.5.4 Client scoping on the detail endpoint
+
+`GET /scan/{id}` requires a `client_id` query parameter and compares it against the record's owner
+before returning anything; a mismatch or a missing record are reported identically as 404, so the
+endpoint does not distinguish "this scan does not exist" from "you do not own it" — collapsing that
+distinction is deliberate, since the alternative response shape would confirm to a caller that a
+guessed identifier is valid even when it belongs to someone else. `/history` and `/stats` treat a
+missing `client_id` as "no history" and return an empty result, which is a safe default for a list;
+`/scan/{id}` has no equivalent safe default for a single record, so it 422s instead of guessing.
+Section 4.7.9 records this as a real defect found and fixed, not a requirement specified correctly
+from the start.
+
+### 4.5.5 DATABASE_URL has no fallback
+
+`backend/database.py` reads `DATABASE_URL` with `os.environ["DATABASE_URL"]`, which raises
+immediately on import if the variable is unset, rather than falling back to a hardcoded connection
+string. This is the same ADR-016 discipline applied to a second, independent failure mode: a
+plausible-looking default here would not produce a wrong verdict, it would let a misconfigured
+deployment connect using a documented, guessable password without anyone noticing. Section 4.7.10
+records where an equivalent, independent fallback had drifted back into the Alembic migration
+environment after the primary one was removed.
+
 ## 4.6 Dashboard implementation
 
 TypeScript runs in strict mode with `any` prohibited. Every response shape is declared once in
@@ -326,6 +451,13 @@ surfaces as a compile error rather than as an undefined value at run time. The t
 
 Presentation components receive `human_readable` and render it. None inspects `feature`. ADR-010 is
 therefore enforced by the shape of the component interface rather than by reviewer vigilance.
+
+The dashboard renders one browser's real scan and browsing-risk history, which is enough to be worth
+hardening even without a known live exploit path: `next.config.ts` sets a Content-Security-Policy
+scoped to the actual backend origin the dashboard calls (not left at a wildcard), plus
+`X-Frame-Options: DENY` against clickjacking-style iframe embedding and `X-Content-Type-Options:
+nosniff`. The policy is static rather than nonce-based, following the framework's own documented
+guidance for avoiding forcing the whole app into dynamic rendering over a fix this contained.
 
 ## 4.7 Defects encountered and their resolution
 
@@ -337,12 +469,13 @@ time.
 ### 4.7.1 D1 — A corpus that was separable for the wrong reason
 
 **Symptom.** Cross-validated F1 around 0.97 on the first trained model. Suspiciously good for a task
-this hard.
+this hard — precisely the kind of implausibly strong result that the security-ML literature warns is
+usually a spurious shortcut rather than a genuine result [12].
 
 **Cause.** The corpus was assembled from two sources with incompatible shapes. Malicious rows came
 from PhishTank as complete URLs with paths and query strings. Benign rows were constructed from a
-domain-ranking list by prefixing `https://` to a bare domain. Every benign URL was therefore short
-and path-free; every malicious one was long and path-bearing.
+domain-ranking list [14] by prefixing `https://` to a bare domain. Every benign URL was therefore
+short and path-free; every malicious one was long and path-bearing.
 
 `url_length` alone came close to solving the task. The model had learned to detect the presence of a
 path.
@@ -466,7 +599,7 @@ Automated coverage exists for both; a real-browser session confirming the interc
 actual page's own permission prompt has not yet been run, and is recorded as an open item in Section
 6.3 rather than presented as a completed verification it is not.
 
-### 4.7.8 A test that concealed correct behaviour
+### 4.7.8 D10 — A test that concealed correct behaviour
 
 Worth recording as a counter-example to the pattern above.
 
@@ -478,6 +611,143 @@ production code was right and the test was wrong.
 
 The general point is that a failing test is evidence about the system, not proof about the code under
 test. Reading it the other way round would have led to "fixing" a correct type guard.
+
+### 4.7.9 D12 — Scan detail readable by any caller who obtained its identifier
+
+**Symptom.** None visible from the client side; every existing test for `GET /scan/{id}` passed,
+because none of them had been written to check ownership.
+
+**Cause.** The handler looked the record up by primary key alone: `scan = await db.get(Scan,
+scan_uuid)`, then returned it if found. `/history` and `/stats` had already been scoped to
+`client_id` when multi-browser scoping was added; this endpoint was missed in the same change,
+leaving one route into full assessment detail — URL, verdict, every SHAP and fusion reason — for
+anyone holding or guessing a `scan_id`, regardless of which browser produced it.
+
+**Resolution.** `client_id` made a required query parameter, compared against `Scan.client_id`
+before returning anything; a mismatch is reported identically to "not found" (§4.5.4). Regression
+tests assert both that a mismatched `client_id` 404s and that a matching one still succeeds, so the
+fix cannot silently regress into either "always 404" or "always succeed."
+
+**What the episode changed.** The general lesson from D2 recurred in a new shape: a capability added
+to two of three sibling endpoints and not the third is a defect the type system cannot catch, because
+each endpoint's signature is independently valid. The three endpoints are now covered by one shared
+regression suite (`tests/integration/test_history_endpoint.py`) specifically so a future change to
+one is exercised against the same expectations as the other two.
+
+### 4.7.10 D13 — A stale column name surviving a rename into the evaluation tooling
+
+**Symptom.** `KeyError: ['num_digits'] not in index` when re-running the baseline comparison after
+the `digit_ratio` rename (§4.7.1 describes the rename itself; this is a follow-on defect in a
+downstream consumer of it).
+
+**Cause.** `evaluate_baselines.py` declared its own `FEATURE_COLS` list independently of
+`feature_columns.json`, and still named the retired column. The rename had touched the trained
+model, the serving path, the shared explanation templates and the primary training script — every
+place that runs on every request or every training run — but not this offline evaluation script,
+which only runs when someone chooses to regenerate `ml/reports/evaluation_report.md`.
+
+**Resolution.** The column name was corrected. The broader point is that a rename's blast radius is
+not "everywhere the tests currently exercise" — it is everywhere the old name is spelled, including
+tooling that only runs on demand and therefore was not exercised by the change that introduced the
+inconsistency in the first place.
+
+### 4.7.11 D14 — A hand-written narrative going stale on the next run
+
+**Symptom.** `ml/reports/evaluation_report.md`'s fusion-sensitivity section stated "doubling every
+weight moves 43.9% of URLs across a risk-band boundary" beside a table whose own `All weights x2.0`
+row read 28.2% — the two numbers, one prose and one tabulated, from the *same* script's *same* run,
+disagreed with each other.
+
+**Cause.** `sensitivity.py` computed its table programmatically but its closing explanatory
+paragraph was a literal string written once, by hand, against an earlier run's figures, and never
+revisited when the script was re-run against a different fusion-weight table (three new signals had
+been added since that paragraph was written).
+
+**Resolution.** The paragraph is now assembled from the same variables that populate the table, so
+the two can no longer disagree. A coverage caveat is generated alongside it, naming any fusion
+signal the fixed synthetic test profile does not exercise, rather than silently reporting a 0 for
+that signal's row with no explanation.
+
+**What the episode changed.** This is D1 and D2's pattern in miniature, inside the evaluation
+tooling itself: a plausible-looking, unchecked number sitting next to a correct one. The general
+rule this project takes from D1, D2 and this defect together is the same rule — a report is a
+program's output, and any part of it not derived from the run it describes is a claim no different
+in kind from an untested line of production code.
+
+### 4.7.12 D15 — A second independent drift back to a weak-default fallback
+
+**Symptom.** None at runtime; found by inspection while extending ADR-016's "no silent fallback"
+discipline to `DATABASE_URL` (§4.5.5).
+
+**Cause.** `backend/alembic/env.py` read `DATABASE_URL` with its own `os.getenv(...)` call and its
+own hardcoded fallback connection string, independently of `backend/database.py`. The primary
+fallback had already been removed once; this second, independent copy had drifted back to exactly
+the same weak default because a bare `alembic` CLI invocation never goes through `main.py`'s
+`load_dotenv()` call, so whoever added Alembic support had reasonably, but incorrectly, assumed the
+environment needed its own explicit default to run standalone.
+
+**Resolution.** `env.py` now calls `load_dotenv()` itself before importing `backend.database`, and
+imports `DATABASE_URL` from there directly instead of re-deriving it — one source of truth instead
+of two independently-maintained copies of the same fallback logic.
+
+**What the episode changed.** A second occurrence of the same defect shape, after the first was
+believed fixed, is evidence that "fixed" needs to mean "structurally impossible to duplicate," not
+just "corrected in the place it was found." The fix here removes the second copy rather than
+patching its default, for exactly that reason.
+
+### 4.7.13 D16 — A helper mutating the global it was only supposed to read
+
+**Symptom.** Every "baseline" call in an early version of `sensitivity.py` — the call meant to fuse
+scores using the *unmodified* shipped weights, for comparison against every perturbed scenario —
+silently fused with an empty weight table instead, because the comparison scenarios ran first and
+never restored what they had changed.
+
+**Cause.** `_fuse_all(p_urls, weights)` cleared `risk_fusion.SIGNAL_WEIGHTS` in place and repopulated
+it from `weights` before fusing, then restored the original afterward. The baseline call passed
+`risk_fusion.SIGNAL_WEIGHTS` itself as `weights` — so `weights` and the global being cleared were the
+*same dictionary object*, and clearing the global cleared the argument out from under itself before a
+single value had been read from it.
+
+**Resolution.** `weights = dict(weights)` snapshots the argument into a new dictionary before the
+global is touched, so a caller passing the live table by reference is unaffected by what happens to
+it afterward. The regression test constructs exactly that aliased call and asserts the fused result
+still reflects the original weights.
+
+**What the episode changed.** A function that mutates shared global state for the duration of a call,
+even when it means to restore it afterward, is unsafe against being handed a reference to that same
+state — a narrower, code-level instance of the same discipline ADR-016 and D2 apply at the
+architectural level: state that looks temporary can still be observed, or in this case consumed,
+mid-mutation.
+
+### 4.7.14 D18 — Duplicate scan records and a popup stuck on "Analyzing"
+
+**Symptom.** Pairs of near-identical scan records for the same tab and URL, timestamped less than
+two seconds apart. Separately, the popup would occasionally sit on the scanning state indefinitely
+even though the corresponding assessment had, in fact, completed.
+
+**Cause.** Chrome can fire `tabs.onUpdated` with `status: "complete"` more than once for a single
+real navigation. `background.js` treated every such event as a fresh page load and re-ran the full
+`POST /analyze` pipeline each time, writing a new record per event rather than per navigation — the
+first-observed instance of it, ironically, was itself a mild variant of D2's underlying lesson
+(trusting an event source's cardinality without verifying it). The popup symptom was a related but
+separate defect: `chrome.storage.onChanged` was not being listened for while the popup was already
+open, so a popup opened *during* scanning never learned the assessment had finished unless it was
+closed and reopened.
+
+**Resolution.** A short recency window (`DUPLICATE_COMPLETE_WINDOW_MS = 3000`) suppresses a second
+`complete` event for the same tab and URL arriving within three seconds of the first — deliberately
+a *recency* check rather than an unconditional same-URL skip, since a genuine revisit or manual
+refresh of the same URL minutes later must still be re-analysed, not silently dropped. The popup now
+subscribes to `chrome.storage.onChanged` for the active tab's key and re-renders when the cached
+entry's status changes, so a popup left open across the scanning-to-done transition updates live
+rather than requiring a reopen.
+
+**What the episode changed.** Neither half of this defect had a symptom that pointed cleanly at its
+cause: duplicate records looked like a persistence bug before the browser-event angle was
+considered, and a stuck popup looked like a backend timeout before the missing storage listener was
+found. Both were resolved by questioning an assumption about event delivery (exactly-once
+navigation completion; a popup's view of storage staying current without an explicit subscription)
+rather than by adding a retry or a timeout around the symptom.
 
 ## 4.8 Development practice
 

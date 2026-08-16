@@ -73,15 +73,16 @@ remainder are summarised in Table 3.1.
 | ADR-005 | FastAPI | Async-first, schema validation at the boundary, generated OpenAPI documentation. | Active |
 | ADR-006 | Next.js App Router | Server rendering, TypeScript throughout, straightforward deployment. | Active |
 | ADR-007 | PostgreSQL with JSONB for variable-length payloads | See Section 3.4.2. | Active |
-| ADR-008 | Reputation via VirusTotal rather than WHOIS | WHOIS is slow, rate-limited and inconsistently formatted; one VirusTotal call returns age and vendor votes together. | Amended by ADR-013 |
+| ADR-008 | Reputation via VirusTotal rather than WHOIS | WHOIS is slow, rate-limited and inconsistently formatted; one VirusTotal call returns age and vendor votes together. | Amended by ADR-013, ADR-017 |
 | ADR-009 | Report a confidence percentage alongside the raw score | "87% confident" is more legible than "0.87". | Superseded by ADR-015 |
 | ADR-010 | Every feature name is translated before it reaches a user surface | See Section 3.2.1. | Active |
 | ADR-011 | Explainability is not descopeable under time pressure | It is the contribution; cutting it leaves an ordinary classifier. | Active |
 | ADR-012 | Evaluation must include a blocklist baseline | Without it, C1 is an assertion. | Active |
-| ADR-013 | Reputation data is corroboration, never a trained feature | See Section 3.2.2. | Active |
+| ADR-013 | Reputation data is corroboration, never a *trained* feature | See Section 3.2.2. Narrowed, not reversed, by ADR-017: still excluded from `feature_columns.json`. | Active |
 | ADR-014 | Browser signals fuse as documented log-odds weights | See Section 3.2.3. | Active |
 | ADR-015 | Risk and confidence are separate quantities | See Section 3.2.4. | Active |
 | ADR-016 | No silent fallback in a serving deployment | See Section 3.2.5. | Active |
+| ADR-017 | Reputation joins the fusion layer, asymmetrically and gated | See Section 3.2.6. | Active |
 
 ### 3.2.1 ADR-010 — No internal identifier reaches a user surface
 
@@ -125,13 +126,17 @@ Claim C2 requires browser signals to move the score. They cannot be trained feat
 corpus carries per-URL tracker counts or permission timings, and synthesising them would be
 indefensible.
 
-The alternative adopted here rests on a property of the attribution method. For a tree ensemble with
-a logistic link, SHAP satisfies local accuracy in the margin space:
+The alternative adopted here rests on a property of the attribution method. SHAP [8] generalises the
+cooperative-game-theoretic Shapley value [18] to model attribution, and for a tree ensemble
+`TreeExplainer` [9] computes it exactly rather than by sampling. For a tree ensemble with a logistic
+link, SHAP satisfies local accuracy in the margin space:
 
 $$f(x) \;=\; \phi_0 \;+\; \sum_{i=1}^{M} \phi_i$$
 
 where $f(x)$ is the model's output in log-odds and each $\phi_i$ is feature $i$'s additive
-contribution to it. SHAP values are, by construction, additive log-odds contributions.
+contribution to it. SHAP values are, by construction, additive log-odds contributions — a stronger
+guarantee than perturbation-based local explanation methods such as LIME [11] offer, which fit a
+local surrogate rather than computing an exact decomposition of the model's own output.
 
 A hand-set weight added in the same space is therefore the same kind of object. The design defines:
 
@@ -198,6 +203,51 @@ database reachability.
 The health endpoint is not incidental. It is the pre-demonstration checklist, and it exists so that
 "is the model actually loaded?" is a question with an answer rather than an assumption.
 
+### 3.2.6 ADR-017 — Reputation joins the fusion layer, asymmetrically and gated
+
+ADR-013 keeps VirusTotal out of the *trained* feature set, for the circularity reason given in
+Section 3.2.2, and that boundary does not move. What this decision adds is a second, narrower route
+by which reputation data can still affect the score: through the same hand-set, log-odds fusion
+mechanism ADR-014 built for browser signals, which was already designed to accept exactly this kind
+of non-trainable, per-request signal.
+
+The trigger was a live false positive. A long-registered, well-known site was assessed at 86%
+phishing, driven entirely by the URL model's own lexical brittleness on a randomised-looking path
+segment — `url_entropy`, `digit_ratio` and `subdomain_depth`, nothing reputation-related, since the
+domain's VirusTotal record already showed zero malicious votes and that fact was, by ADR-013's own
+design, contributing nothing to the score. The lexical model had no route to be corrected by
+information the system already possessed.
+
+**The asymmetry, and why it is load-bearing.** `vt_malicious_votes` is added to the fusion weight
+table (Table 4.1) as an ordinary signal: a saturating transform, the highest weight in the table,
+justified because several vendors independently corroborating malicious intent is credible evidence.
+`vt_harmless_votes` is *not* added there, and this omission is deliberate, not an oversight. A
+brand-new phishing domain shows zero malicious votes for exactly the same reason a brand-new benign
+domain does — nobody has scanned it yet — so treating "clean" symmetrically with "flagged" would
+reintroduce the cold-start blind spot this project's own B1 baseline already measured: a blocklist-
+derived signal recovers 0.0% recall on URLs no one has reported (Table 5.15). "VirusTotal has not
+flagged this" must never be read as "VirusTotal vouches for this."
+
+**The gated exception.** A narrow, three-signal condition —
+$\text{domain\_age\_days} \geq 365$ **and** $\text{vt\_malicious\_votes} = 0$ **and**
+$\text{vt\_harmless\_votes} \geq 10$ — applies a bounded, negative log-odds contribution
+("established-reputation dampening"). All three conditions must hold jointly, and a brand-new
+phishing domain can satisfy neither the age condition (it cannot fake a multi-year registration) nor
+the vote-count condition (harmless votes accumulate from real scanning history over time, the same
+way malicious votes do). This is deliberately implemented outside the single-signal weight table,
+in `fuse()` itself, because it is a function of three signals jointly rather than one value passed
+through one transform — the table's shape does not fit it.
+
+**The cost, stated plainly, in the same terms as ADR-014's.** This is a second hand-set judgement
+layered on the first, not a learned relationship, and it inherits the same limitation: no corpus
+pairs domain age and vendor-vote counts with a phishing label at the volume needed to fit it
+empirically (Section 3.2.3's own reasoning applies unchanged). It is documented, gated tightly
+enough that a highly capable adversary would still need years of accumulated, independently-verified
+clean history to trigger it, and it closes a concrete, observed false positive that the architecture
+had no other mechanism to correct. Section 5.12.2 extends the existing sensitivity analysis to this
+signal where the test harness's synthetic browser-signal profile allows it to be exercised, and
+states plainly where it currently cannot be.
+
 ## 3.3 Class design
 
 ![Figure 3.1 — Class diagram](diagrams/out/fig-3-1-class-diagram.png)
@@ -235,10 +285,12 @@ preferable to the complexity of persisting on every request event.
 
 *Figure 3.2 — Logical entity-relationship model in third normal form.*
 
-The normalised model has eight relations. `SCAN` holds the scalar outcome; each variable-length
+The normalised model has ten relations. `SCAN` holds the scalar outcome; each variable-length
 component becomes a satellite relation with a foreign key; `RULE_FLAG` is a lookup joined through
-`SCAN_RULE_FLAG`, which resolves the many-to-many relationship. Every non-key attribute depends on
-its key and nothing else, so the model is in 3NF.
+`SCAN_RULE_FLAG`, which resolves the many-to-many relationship. `SCAM_CONTENT_SIGNAL`, added when
+the page-content scanner landed (§4.3.7), follows the same shape as `NETWORK_SIGNAL`: one optional
+satellite per scan, holding the counts the fusion layer actually reads. Every non-key attribute
+depends on its key and nothing else, so the model is in 3NF.
 
 ### 3.4.2 Physical model and the case for denormalisation
 
@@ -246,8 +298,12 @@ its key and nothing else, so the model is in 3NF.
 
 *Figure 3.3 — Physical schema as implemented.*
 
-The implemented schema is one table. The seven satellite relations collapse into five nullable JSONB
-columns. This departs from Figure 3.2 deliberately, on three grounds.
+The implemented schema is one table. The eight satellite and lookup relations collapse into six
+nullable JSONB columns plus, since ADR-015 and the multi-browser scoping work, three additional
+scalar columns (`risk_pct`, `client_id`, `last_scanned_at`) that were not present when Figure 3.2 was
+first drawn and are folded directly onto `SCAN` rather than into a satellite, because each is a
+single scalar value with no internal structure to denormalise. This departs from Figure 3.2
+deliberately, on three grounds.
 
 **Access pattern.** Every query in the system reads a scan whole. The history view lists scalar
 columns; the detail view fetches one record and renders all of it. Nothing filters on an individual
@@ -272,9 +328,13 @@ denormalisation is targeted, not wholesale.
 
 ### 3.4.3 Schema management
 
-The schema is versioned with Alembic. Revision `ab476f0dcf44` creates the table. Migrations are
-applied by an explicit command, never generated automatically at start-up: a service that alters its
-own schema on boot will eventually do so at the least convenient moment.
+The schema is versioned with Alembic, as five linear revisions: `ab476f0dcf44` creates the table;
+`33be02683ae4` adds `risk_pct`, backfilling it from the existing `risk_score` for any pre-existing
+rows (ADR-015); `4d6f5fb287b2` adds the nullable, indexed `client_id`; `762a960b07ca` adds
+`scam_content_signals`; `f48ff135cc1a` adds `last_scanned_at`, backfilled from `created_at` since
+every pre-existing row's only scan so far *is* its most recent one. Migrations are applied by an
+explicit command, never generated automatically at start-up: a service that alters its own schema on
+boot will eventually do so at the least convenient moment.
 
 ## 3.5 Component design
 
@@ -286,7 +346,17 @@ The three shared assets — tracker list, brand list and sentence templates — 
 components. Each has one authoritative copy. The tracker list is additionally bundled into the
 extension package, because the extension must function without network access to the repository;
 that bundled copy is a build-time artefact of the same source, not an independently maintained
-second list.
+second list. The scam-indicator phrase list (§4.3.7) is not a fourth shared asset: it lives entirely
+inside the Scam Content Scanner component, since nothing outside the extension currently needs it —
+unlike the tracker and brand lists, it has no server-side counterpart to stay synchronised with.
+
+The Scam Content Scanner sits alongside the Network and Permission Monitors as a third,
+independently-triggered extension component (§4.3.7, §4.4.3): it runs in the default isolated world,
+not the main world `permission_monitor.js` requires, because reading already-rendered DOM text needs
+no page-script interception. Its output reaches the Analyze Router the same way the other two
+monitors' does — via the API Client — and from there into the same merged feature vector the Risk
+Fusion component reads, which is also how VirusTotal Client's reputation data reaches fusion since
+ADR-017: through the Analyze Router's merge, not a direct edge to Risk Fusion.
 
 ## 3.6 Interface design
 
@@ -297,7 +367,7 @@ second list.
 | `POST` | `/analyze` | Assess a URL with optional browser signals | 200 | 422 schema violation; 503 model unavailable; 500 persistence failure |
 | `GET` | `/history` | Paginated assessment list | 200 | 422 out-of-range pagination |
 | `GET` | `/stats` | Aggregate counts and mean decisiveness | 200 | — |
-| `GET` | `/scan/{id}` | One assessment in full | 200 | 400 malformed identifier; 404 unknown identifier |
+| `GET` | `/scan/{id}` | One assessment in full, scoped by `client_id` query parameter (required) | 200 | 400 malformed identifier; 404 unknown identifier or `client_id` does not own it; 422 missing `client_id` |
 | `GET` | `/health` | Operational state | 200 | — |
 
 ### 3.6.2 Assessment request
@@ -314,7 +384,15 @@ second list.
   "permission_signals": {                       // optional
     "permissions_requested": ["notifications"],
     "rule_flags": ["notification_prompt_on_load"]
-  }
+  },
+  "scam_content_signals": {                     // optional
+    "scam_keyword_hits": 2,                     // ≥ 0, distinct matched phrases
+    "matched_phrases": ["verify your account now"],
+    "sensitive_field_count": 2,                 // ≥ 0, distinct categories
+    "sensitive_field_categories": ["password", "card_number"]
+  },
+  "client_id": "1c3f2b9e-…"                      // optional; scopes /history and /stats to
+                                                   // this browser install, not an auth token
 }
 ```
 
@@ -335,6 +413,12 @@ second list.
       "human_readable": "URL contains a well-known brand name in a suspicious position"
     },
     {
+      "feature": "vt_malicious_votes",
+      "value": 7,
+      "shap_impact": 0.87,                      // fusion contribution, ADR-017
+      "human_readable": "7 security vendors have flagged this domain as malicious"
+    },
+    {
       "feature": "tracker_count",
       "value": 41,
       "shap_impact": 0.55,
@@ -342,17 +426,20 @@ second list.
     }
   ],
   "flagged_rules": ["excessive_trackers", "long_redirect_chain"],
-  "vt_corroboration": {                         // display only, per ADR-013
-    "domain_age_days": 3,
-    "vt_malicious_votes": 7,
+  "vt_corroboration": {                         // never a trained feature, per ADR-013; also
+    "domain_age_days": 3,                       // feeds vt_malicious_votes / vt_established_
+    "vt_malicious_votes": 7,                    // reputation in top_reasons above, per ADR-017
     "vt_harmless_votes": 61
   }
 }
 ```
 
-The second entry in `top_reasons` is a browser signal and the first is a model attribution. They are
-structurally identical. Nothing in the schema, the chart or the sentence renderer needs to know
-which is which — the visible payoff of ADR-014.
+`vt_corroboration` is retained on every response regardless of whether it fired in `top_reasons` —
+it is the raw evidence a user can read even when it was not among the three largest contributions.
+The second and third entries in `top_reasons` are, respectively, a reputation-fusion signal and a
+browser signal; the first is a model attribution. All three are structurally identical. Nothing in
+the schema, the chart or the sentence renderer needs to know which family produced which entry —
+the visible payoff of ADR-014, now shared by ADR-017.
 
 ### 3.6.4 Health response
 
@@ -362,7 +449,7 @@ which is which — the visible payoff of ADR-014.
   "version": "0.1.0",
   "model_loaded": true,
   "feature_count": 9,
-  "model_sha256": "3f7a…",
+  "model_sha256": "577be217015a940b…",           // full digest of the currently loaded artefact
   "vt_key_configured": true,
   "db_reachable": true
 }
@@ -372,16 +459,26 @@ which is which — the visible payoff of ADR-014.
 
 ### 3.7.1 Extension popup
 
-The popup is a state machine with five states, exactly one of which is visible.
+The popup is a state machine with seven states, exactly one of which is visible.
 
 | State | Trigger | Content |
 |---|---|---|
 | Idle | No record for the tab | Invitation to reload |
 | Scanning | Assessment in flight | Progress indicator |
+| Local | Tab navigated to a localhost or RFC1918/link-local address | Dedicated notice; the model is not invoked at all |
 | Safe | Verdict *legitimate* | Green mark, confidence sentence, contributing reasons |
 | Suspicious | Verdict *suspicious* | Amber mark, risk percentage, ranked reasons |
 | Phishing | Verdict *phishing* | Red mark, confidence sentence, ranked reasons, report link |
 | Error | Assessment failed | Non-technical description, retry control |
+
+The Local state (FR-33) exists because no public phishing or legitimate corpus contains local or
+private-network addresses, so the model has zero training signal for them and any verdict it
+produced would be meaningless rather than merely uncertain. `background.js` detects this before
+calling the service at all — `isLocalOrPrivateHost()` matches `localhost`, loopback, and the three
+RFC1918 ranges plus link-local — and shows this state instead of invoking analysis, rather than
+letting the model guess and dressing the guess up as a verdict. It is deliberately a distinct sixth
+state rather than folded into Error, since navigating to a local address is not a failure of
+anything; representing it as one would misdescribe what happened.
 
 Reasons are rendered from `human_readable` alone. The popup never inspects `feature`, which
 guarantees ADR-010 structurally rather than by discipline.
@@ -400,6 +497,12 @@ Three views. **Overview** shows counts by verdict, mean decisiveness and a distr
 **History** is a paginated, sortable table linking to detail. **Detail** presents the verdict banner,
 a risk bar, network and permission cards, the corroboration card marked as independent of the
 verdict, and the contribution chart.
+
+All three views read `client_id` from `chrome.storage.local` (via the extension) or a
+browser-local value the dashboard itself generates on first visit, and send it with every request.
+This is a scoping identifier, not a login: it partitions one browser's history from another's on a
+shared backend, and FR-25/FR-26 (§2.2.4) require it explicitly rather than defaulting to showing
+every browser's data to every caller.
 
 The contribution chart is a horizontal waterfall: one bar per contribution, length proportional to
 absolute log-odds impact, red for increases in risk and green for decreases, labelled with the

@@ -15,7 +15,6 @@ Diagrams are PlantUML sources rendered to PNG.
 | `05-testing.md` | Chapter 5 — strategy, test cases, model evaluation |
 | `06-conclusion.md` | Chapter 6 |
 | `07-references.md` | IEEE reference list |
-| `08-appendices.md` | Traceability matrix, provenance, weights, build instructions, repository layout |
 | `diagrams/*.puml` | Diagram sources |
 | `diagrams/out/*.png` | Rendered diagrams (regenerate rather than edit) |
 | `build.sh` | Renders diagrams, assembles the Word document, applies final styling |
@@ -71,17 +70,23 @@ Diagrams can also be edited with the PlantUML VS Code extension, which previews 
 
 ## Before submitting
 
-1. **Every ⟨M-nn⟩ figure in Table 5.1 has been measured and filled in** (13 August 2026) — the tag
-   is now a traceability anchor, not an outstanding item. If the offline pipeline is re-run before
-   submission (a corpus or code change), re-run the affected scripts and update the corresponding
-   tables rather than trusting the committed numbers to still be current.
-2. **Complete the bracketed fields** in `00-front-matter.md` (name, number, institution, supervisor,
-   date) — Appendices B, C and D are filled from measured data and do not need completion.
+1. **Every ⟨M-nn⟩ figure in Table 5.1 has been measured and filled in** (13 August 2026; re-measured
+   16 August 2026 for every figure downstream of the `digit_ratio` and fusion-layer changes, plus a
+   new ⟨M-18⟩ repeated-seed entry) — the tag is now a traceability anchor, not an outstanding item.
+   If the offline pipeline is re-run before submission (a corpus or code change), re-run the affected
+   scripts and update the corresponding tables rather than trusting the committed numbers to still be
+   current.
+2. **Complete the remaining bracketed fields** in `00-front-matter.md` (student number, degree,
+   department, institution, supervisor) — author and submission date are filled in. Tables 4.1, 5.12
+   and 5.24 (fusion weights, dataset provenance, end-to-end per-URL detail — formerly Appendices C,
+   B and D) are filled from measured data and do not need completion.
 3. **Verify every reference.** Report statistics change between editions; check the year and the
    quoted figure against the edition you cite, and add access dates to online sources.
 4. **Rewrite the prose in your own voice.** You have to defend every sentence in the viva, and the
    passages carrying the most marks — the dataset audit narrative in §4.7.1, the fusion argument in
-   §3.2.3, the reflection in §6.6 — are the ones an examiner will press hardest on.
+   §3.2.3, the reputation-fusion decision in §3.2.6, the seed-sensitivity finding in §5.9.1, the
+   digit_ratio-fix re-check in §5.15.2, and the reflection in §6.6 — are the ones an examiner will
+   press hardest on.
 5. **Apply your department's template** — font, margins, line spacing, heading numbering, page
    numbering, caption style.
 6. **Update the table of contents** — right-click it in Word and choose *Update Field*. Do this last,

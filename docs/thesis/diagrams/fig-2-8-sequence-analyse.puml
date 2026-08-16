@@ -18,9 +18,10 @@ participant ":ExplainerFormatter" as EF
 participant ":Scan" as Scan
 database "PostgreSQL" as DB
 
-SW -> API : analyzePage(url, networkSignals, permissionSignals)
+SW -> API : analyzePage(url, networkSignals, permissionSignals, scamContentSignals)
 activate API
-API -> Router : POST /analyze
+API -> API : getClientId()
+API -> Router : POST /analyze { ..., clientId }
 activate Router
 
 Router -> Router : _extract_domain(url)
@@ -35,7 +36,7 @@ else cache miss
 end
 deactivate VTC
 
-Router -> HE : evaluate(networkSignals, permissionSignals)
+Router -> HE : evaluate(networkSignals, permissionSignals, scamContentSignals)
 activate HE
 HE --> Router : (ruleFlags, heuristicFeatures)
 deactivate HE
@@ -69,9 +70,19 @@ else artefact missing and fallback not permitted
 end
 deactivate SHAP
 
-Router -> Scan : new Scan(...)
+alt clientId present
+  Router -> DB : SELECT scan WHERE client_id = clientId AND url = url
+  activate DB
+  DB --> Router : existing row, or none
+  deactivate DB
+end
+alt existing row found
+  Router -> Scan : update fields, last_scanned_at = now
+else no existing row (or no clientId)
+  Router -> Scan : new Scan(..., client_id=clientId, last_scanned_at=now)
+end
 activate Scan
-Router -> DB : add + commit + refresh
+Router -> DB : add (if new) + commit + refresh
 activate DB
 DB --> Router : persisted row
 deactivate DB

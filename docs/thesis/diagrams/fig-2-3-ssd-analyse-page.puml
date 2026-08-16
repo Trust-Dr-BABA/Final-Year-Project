@@ -32,9 +32,14 @@ System --> Browser : analysisResult { scanId, verdict, riskPct,\nconfidencePct, 
 deactivate System
 
 note over System
-  Alternative flow 4a: VirusTotal times out after 5 s.
-  The system substitutes sentinel values and proceeds;
-  the verdict is unchanged.
+  Alternative flow 4a: VirusTotal times out after 2.5 s
+  (reduced from 5 s once its votes started feeding the
+  fused score, ADR-017 -- a slow reputation response is
+  now request latency, not just a display delay). The
+  system substitutes sentinel values and proceeds; the
+  gated fusion conditions require real data, so they
+  cannot fire on a sentinel and the verdict is unaffected
+  by the timeout itself.
 
   Alternative flow 5a: the trained model is unavailable.
   The system returns HTTP 503 rather than a fabricated

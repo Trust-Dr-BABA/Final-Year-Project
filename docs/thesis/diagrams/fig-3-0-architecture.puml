@@ -16,6 +16,7 @@ skinparam rectangle {
 rectangle "Observation layer\nChrome MV3 extension" <<obs>> as L1 {
   card "webRequest /\nwebNavigation listeners" as c1
   card "permission API\ninterception" as c2
+  card "page-content phrase /\nfield scanning" as c1b
   card "per-tab signal store" as c3
 }
 
@@ -29,7 +30,7 @@ rectangle "Domain layer\nscoring and explanation" <<dom>> as L3 {
   card "lexical feature\nextraction" as c7
   card "heuristic rule\nevaluation" as c8
   card "XGBoost +\nSHAP attribution" as c9
-  card "log-odds fusion" as c10
+  card "log-odds fusion\n(browser + content +\nreputation, ADR-014/017)" as c10
   card "explanation\nformatting" as c11
 }
 

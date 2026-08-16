@@ -12,15 +12,19 @@ entity "scans" as scans {
   * url : TEXT <<IX ix_scans_url>>
   * verdict : VARCHAR(20)
   * risk_score : DOUBLE PRECISION
+  * risk_pct : INTEGER
   * confidence_pct : INTEGER
+  client_id : VARCHAR(64) <<IX ix_scans_client_id>>
   --
   url_features : JSONB
   network_signals : JSONB
   permission_signals : JSONB
+  scam_content_signals : JSONB
   shap_values : JSONB
   flagged_rules : JSONB
   --
   * created_at : TIMESTAMPTZ
+  * last_scanned_at : TIMESTAMPTZ
 }
 
 entity "alembic_version" as av {
@@ -28,8 +32,10 @@ entity "alembic_version" as av {
 }
 
 note right of scans
-  The five nullable JSONB columns collapse
-  the seven satellite entities of Figure 3.2.
+  Six nullable JSONB columns collapse the seven
+  satellite entities of Figure 3.2 (scam_content_
+  signals added by revision 762a960b07ca, after
+  the page-content scanner landed).
 
   Justification (ADR-007):
   - Attribution arrays are variable length and
@@ -41,6 +47,14 @@ note right of scans
   - PostgreSQL JSONB is indexable via GIN if a
     query pattern later demands it, so the
     decision is reversible.
+
+  client_id (revision 4d6f5fb287b2) is nullable and
+  indexed, not a foreign key to any USER-type
+  entity: it scopes /history and /stats to one
+  browser install, deliberately not an account.
+  risk_pct (33be02683ae4) and last_scanned_at
+  (f48ff135cc1a) are later additions, per ADR-015
+  and the upsert-by-(client_id, url) behaviour.
 
   Cost, stated plainly: referential integrity for
   rule flags is enforced in application code rather

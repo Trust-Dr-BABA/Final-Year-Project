@@ -49,4 +49,19 @@ endif
 :Measure calibration and explanation faithfulness;
 :Write ml/reports/evaluation_report.md;
 stop
+
+note right
+  Two further, separate tools consume
+  this pipeline's output rather than
+  extending its linear flow:
+  cross_validate.py repeats the split
+  and training steps under multiple
+  seeds for confidence intervals
+  (§5.9.1); retrain_gate.py re-runs
+  the leakage audit and a candidate
+  training run, promoting only if it
+  does not regress against the
+  incumbent model (§4.7's algorithm
+  notes).
+end note
 @enduml

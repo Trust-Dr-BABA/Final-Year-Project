@@ -38,7 +38,6 @@ echo "Building thesis.docx…"
   05-testing.md \
   06-conclusion.md \
   07-references.md \
-  08-appendices.md \
   --from markdown \
   --reference-doc=reference.docx \
   --resource-path=. \

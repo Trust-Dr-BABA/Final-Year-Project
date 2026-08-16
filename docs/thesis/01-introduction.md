@@ -95,9 +95,14 @@ overclaiming it would be the easiest way to make the work look better than it is
 **Within scope**
 
 - Pages loaded in a Chromium-based desktop browser by a user who has installed the extension.
-- Three signal families: lexical URL structure; network behaviour during page load (third-party
-  tracker contact, mixed content, top-level redirect depth); and permission-request behaviour
-  (camera, microphone, geolocation and notification requests made before any user interaction).
+- Four signal families: lexical URL structure; network behaviour during page load (third-party
+  tracker contact, mixed content, top-level redirect depth); permission-request behaviour (camera,
+  microphone, geolocation and notification requests made before any user interaction); and a
+  narrow slice of page-content behaviour — matches against a fixed list of multi-word
+  scam-indicator phrases in the rendered text, and the count of distinct sensitive-data categories
+  (password, card number, national ID number, bank account) requested by the page's own forms.
+  Reputation data (domain age, corroborating vendor votes) is retrieved live and, since ADR-017,
+  narrowly and asymmetrically influences the score alongside these four (§3.2.6).
 - Assessment of the top-level document. Sub-frames contribute to network measurements but are not
   assessed independently.
 - A recorded history of assessments, and a per-assessment report that reproduces the full
@@ -110,10 +115,14 @@ overclaiming it would be the easiest way to make the work look better than it is
 - The contents of encrypted payloads. The extension sees that a request occurred and where it went,
   not what it carried.
 - Email, SMS and messaging as delivery channels. The system engages once a link has been opened.
-- Page content analysis: rendered text, images, form structure and visual similarity to a
-  legitimate brand are all deliberately excluded. They are a substantial research area in their own
-  right, and folding them in would have meant doing several things shallowly instead of one thing
-  properly.
+- **Deeper page content analysis.** The scam-phrase and sensitive-field matching above is
+  deliberately narrow — a fixed phrase list and a count of field categories, both content-agnostic
+  beyond that. Rendered-page images, full DOM structural analysis, and visual similarity checking
+  against known brand login pages remain out of scope. They are a substantial research area in
+  their own right (§6.5), and folding them in fully would have meant doing several things shallowly
+  instead of one thing properly; the narrow slice that *is* in scope was added specifically because
+  it was cheap to validate and directly closed a concrete gap (§4.3.7), not as a first step toward
+  the fuller version by default.
 - Mobile browsers, which do not support the extension APIs this design depends on.
 
 The browser is not an arbitrary boundary. It is the last point at which the user's intent, the
@@ -133,15 +142,17 @@ against, under a temporal split in which every test URL was submitted later than
 URL. Section 5.10 reports the comparison against four baselines, including the blocklist itself.
 
 **C2 — Detection is genuinely multi-signal.**
-Browser-observed signals measurably move the final score and appear in the ranked explanation
-alongside model attributions. This is not automatic: an earlier revision computed those signals,
-merged them into the feature vector, and then silently discarded them before scoring. Section 4.7.2
-describes how the defect was found and Section 5.5.3 gives the test that now prevents it
-recurring.
+Browser, page-content and reputation signals measurably move the final score and appear in the
+ranked explanation alongside model attributions. This is not automatic: an earlier revision computed
+browser signals, merged them into the feature vector, and then silently discarded them before
+scoring. Section 4.7.2 describes how that defect was found and Section 5.5.3 gives the test that now
+prevents it recurring; the page-content and reputation signals added later (§3.2.6, §4.3.7) were
+built with that regression test already in place, and are covered by its same "unknown key raises"
+guarantee.
 
 **C3 — Explanations are faithful rather than decorative.**
 Neutralising the three highest-ranked reasons moves the score in the direction those reasons
-predicted for 87.0% of the temporal-split test set — short of the 90% target set for this claim,
+predicted for 88.4% of the temporal-split test set — short of the 90% target set for this claim,
 and reported as measured rather than adjusted (Section 5.12). Very few undergraduate projects test
 their own explanations; asserting faithfulness without measuring it would undercut the entire
 premise of the work, and measuring it honestly means reporting the shortfall too.

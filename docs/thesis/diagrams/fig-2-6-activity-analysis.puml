@@ -17,6 +17,10 @@ fork again
   inside an HTTPS page;
 fork again
   :Count top-level redirect hops;
+fork again
+  :Scan rendered text for scam
+  phrases and form fields for
+  sensitive-data categories;
 end fork
 
 :Page load completes;
@@ -34,12 +38,12 @@ endif
 
 fork
   :Query VirusTotal
-  (5 s timeout, 1 h TTL cache);
+  (2.5 s timeout, 1 h TTL cache);
 fork again
   :Extract 9 lexical features;
 fork again
-  :Evaluate heuristic rules
-  over browser signals;
+  :Evaluate heuristic rules over
+  browser and page-content signals;
 end fork
 
 if (Trained model available?) then (no)
@@ -52,7 +56,8 @@ if (Trained model available?) then (no)
 else (yes)
   :Score feature vector with XGBoost -> p_url;
   :Attribute p_url with SHAP TreeExplainer;
-  :Add browser-signal weights in log-odds space;
+  :Add browser, page-content and gated
+  reputation-fusion weights in log-odds space;
   :Map fused log-odds back through sigmoid;
 endif
 

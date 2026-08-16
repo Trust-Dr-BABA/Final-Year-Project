@@ -9,13 +9,13 @@
 | | |
 |---|---|
 | **Title** | Explainable Multi-Signal Phishing and Privacy Detection in the Browser |
-| **Author** | *[full name]* |
+| **Author** | Hammad |
 | **Student number** | *[number]* |
 | **Degree** | *[BSc/BEng … in …]* |
 | **Department** | *[department]* |
 | **Institution** | *[institution]* |
 | **Supervisor** | *[name]* |
-| **Submission date** | *[date]* |
+| **Submission date** | 17 August 2026 |
 
 
 # Declaration
@@ -57,16 +57,44 @@ alone, falling to 0.59 after the corpus was rebuilt with genuine deep-path benig
 instrument was built to quantify this rather than merely remove it, and the resulting before-and-after
 comparison is presented as a finding in its own right. Evaluation was executed under a temporal
 split and an unseen-registrable-domain split, against four measured baselines including a blocklist
-(0.0% recall on unseen URLs, against the trained model's 62.1%), with calibration measured (ECE
-0.082), explanation faithfulness tested by ablation (87.0% directional agreement, short of the 90%
+(0.0% recall on unseen URLs, against the trained model's 61.3%), with calibration measured (ECE
+0.084), explanation faithfulness tested by ablation (88.4% directional agreement, short of the 90%
 target and reported as such), and a 30-URL live run against real, previously-unseen URLs (20/30
 correct, one deep-path false positive, both reported and root-caused rather than adjusted).
 
-Software verification is complete: 55 automated tests pass, browser instrumentation is confirmed
-against live commercial sites, and every failure path is confirmed to refuse rather than to fabricate
-a verdict. Every figure in this report is measured against the rebuilt corpus and the trained model,
-including the results that fell short of their stated target, which are reported honestly rather
-than adjusted or omitted.
+A late finding during evaluation traced one of the false positives to a raw digit-count feature
+being dominated by a single incidental character; replacing it with a length-normalised digit
+*density* resolved that specific case, and re-running the same 30-URL check afterward found the
+fix worked exactly as diagnosed — and also surfaced a second, unrelated false positive sitting a
+single percentage point over the interstitial threshold, which is reported alongside the fix rather
+than left out because the headline count did not change. Two further, purely mechanical defects
+were found by re-running the evaluation pipeline against the corrected corpus: a baseline-comparison
+script still referencing the old feature's column name, and a sensitivity-analysis report whose
+narrative text had been hand-written against one run's numbers and silently gone stale on the next.
+Both are corrected and both are recorded as defects in their own right, in keeping with this report's
+treatment of D1 and D2.
+
+Reputation data was extended during the same evaluation pass from a purely displayed corroboration
+signal into a second, narrowly-gated fusion input: corroborating malicious votes now raise the
+fused score under the same log-odds mechanism as browser signals, and a long-registered domain with
+many corroborating clean votes and no malicious ones receives a bounded, gated reduction — closing a
+concrete false-positive case (a legitimate site scored as high-confidence phishing on lexical
+grounds alone) without reopening the cold-start blind spot a naive symmetric reputation signal would
+reintroduce.
+
+A repeated-seed evaluation, run for the first time during this pass, closes the "single-run"
+limitation this report previously stated outright: across ten seeds, the temporal-split protocol's
+F1 varies by only ±0.004, while the unseen-registrable-domain protocol's varies by ±0.058 — an order
+of magnitude more — meaning the second protocol's single previously-reported figure should be read
+as one draw from a genuinely wide distribution rather than a precise estimate, a finding invisible
+to any single-seed run.
+
+Software verification is complete: 95 automated Python tests, three extension JavaScript test
+suites, and a Playwright end-to-end suite of sixteen scenarios against the full deployed stack all
+pass; browser instrumentation is confirmed against live commercial sites; and every failure path is
+confirmed to refuse rather than to fabricate a verdict. Every figure in this report is measured
+against the rebuilt corpus and the trained model, including the results that fell short of their
+stated target, which are reported honestly rather than adjusted or omitted.
 
 **Keywords** — phishing detection, explainable artificial intelligence, SHAP, browser extension,
 privacy analysis, dataset leakage, model calibration
@@ -110,20 +138,23 @@ privacy analysis, dataset leakage, model calibration
 | Table | Title | Section |
 |---|---|---|
 | 3.1 | Design decision register | 3.2 |
-| 5.1 | Pending measurement register | 5.2 |
+| 4.1 | Fusion weights and their justification | 4.3.5 |
+| 5.1 | Measurement register | 5.2 |
 | 5.2–5.5 | Dataset audit, original and rebuilt corpora | 5.4 |
 | 5.6–5.8 | Unit test suite, cases and defect regressions | 5.5 |
 | 5.9 | Integration test cases | 5.6 |
 | 5.10 | System test cases | 5.7 |
 | 5.11 | Corpus composition | 5.8 |
-| 5.12–5.13 | Detection performance and confusion matrix | 5.9 |
-| 5.14 | Baseline comparison | 5.10 |
-| 5.15–5.16 | False positives and calibration | 5.11 |
-| 5.17–5.18 | Faithfulness and weight sensitivity | 5.12 |
-| 5.19 | Assessment latency | 5.13 |
-| 5.20 | Security and privacy test cases | 5.14 |
-| 5.21 | End-to-end result | 5.15 |
-| 5.22 | Defect log | 5.16 |
+| 5.12 | Dataset provenance | 5.8 |
+| 5.13, 5.13a–b | Detection performance, and repeated-seed confidence intervals | 5.9 |
+| 5.14 | Confusion matrix, temporal split | 5.9 |
+| 5.15 | Baseline comparison | 5.10 |
+| 5.16–5.17 | False positives and calibration | 5.11 |
+| 5.18–5.19 | Faithfulness and weight sensitivity | 5.12 |
+| 5.20 | Assessment latency | 5.13 |
+| 5.21 | Security and privacy test cases | 5.14 |
+| 5.22–5.24 | End-to-end result, confusion matrix and per-URL detail | 5.15 |
+| 5.25 | Defect log | 5.16 |
 | 6.1 | Objectives and outcomes | 6.2 |
 
 
@@ -187,10 +218,14 @@ This report distinguishes between figures that have been measured and figures th
 Measured values are stated plainly with the date and environment of the run that produced them.
 Every figure enumerated in Table 5.1 was executed and recorded on 13 August 2026; the **⟨M-nn⟩** tag
 is retained beside each one throughout Chapter 5 as a traceability anchor back to that register, not
-as a marker of an outstanding measurement. No quantitative result in this document is estimated,
-interpolated, or carried over from an earlier configuration of the system — including the results
-that fell short of their stated target (§5.11.1, §5.12.1, §5.15), which are reported as measured
-rather than adjusted or omitted.
+as a marker of an outstanding measurement. Every figure that depends on the trained model was
+**re-executed and re-recorded on 16 August 2026**, after `digit_ratio` replaced a raw digit count in
+the feature set (§4.7.1, §5.4.3) and the fusion layer was extended with two page-content signals and
+a VirusTotal-derived signal (§4.3.5); Chapter 5 states the later date wherever a table reflects that
+re-run rather than the original 13 August figures, so the two measurement passes are never
+conflated. No quantitative result in this document is estimated, interpolated, or carried over from
+an earlier configuration of the system — including the results that fell short of their stated
+target (§5.11.1, §5.12.1, §5.15), which are reported as measured rather than adjusted or omitted.
 
 This convention is applied deliberately. Section 4.7.1 describes a corpus defect that produced an
 excellent-looking score with no validity whatsoever, and the discipline adopted afterwards is the

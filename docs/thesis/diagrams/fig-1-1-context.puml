@@ -19,7 +19,7 @@ User --> SYS : opens popup,\nreads reasons,\nreviews history
 Web --> SYS : observable browser behaviour\n(requests, redirects,\npermission prompts)
 SYS --> User : verdict, risk percentage,\nranked plain-English reasons
 SYS --> VT : registrable domain
-VT --> SYS : age and vendor votes\n(corroboration only)
+VT --> SYS : age and vendor votes\n(never a trained feature;\nnarrowly gated into the\nfused score, ADR-017)
 Corpus --> Res : labelled URLs
 Res --> SYS : trained model artefact
 

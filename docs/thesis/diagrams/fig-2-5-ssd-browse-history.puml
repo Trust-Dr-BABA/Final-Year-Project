@@ -8,24 +8,28 @@ skinparam defaultFontSize 12
 actor "Web User" as User
 participant ":System" as System
 
-User -> System : requestOverview()
+User -> System : requestOverview(clientId)
 activate System
+note right : clientId absent -> zeroed statistics,\nno query issued (never every browser's data)
 System --> User : statistics { totalScans, phishingCount,\nsuspiciousCount, legitimateCount, avgConfidencePct }
 deactivate System
 
-User -> System : requestHistory(limit, offset)
+User -> System : requestHistory(limit, offset, clientId)
 activate System
+note right : clientId absent -> empty page, no query issued
 System --> User : page { scans[], total, limit, offset }
 deactivate System
 
-User -> System : requestScanDetail(scanId)
+User -> System : requestScanDetail(scanId, clientId)
 activate System
-alt scanId is a well-formed UUID and the record exists
-  System --> User : scan { url, verdict, riskScore, confidencePct,\nurlFeatures, networkSignals, permissionSignals,\nattributions, flaggedRules, createdAt }
+alt clientId is absent
+  System --> User : error 422 "clientId required"
 else scanId is malformed
   System --> User : error 400 "Invalid scan_id"
-else no such record
+else no such record, or clientId does not own it
   System --> User : error 404 "Scan not found"
+else scanId is well-formed and clientId owns the record
+  System --> User : scan { url, verdict, riskScore, riskPct, confidencePct,\nurlFeatures, networkSignals, permissionSignals,\nscamContentSignals, attributions, flaggedRules,\ncreatedAt, lastScannedAt }
 end
 deactivate System
 @enduml

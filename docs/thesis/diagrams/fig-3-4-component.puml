@@ -10,6 +10,7 @@ package "Chrome MV3 Extension" {
   [Service Worker] as SW
   [Network Monitor] as NM
   [Permission Monitor] as PM
+  [Scam Content Scanner] as SCS
   [API Client] as AC
   [Popup UI] as PU
   [Interstitial Overlay] as IO
@@ -54,6 +55,7 @@ interface "HTTP/JSON\nGET /health" as I_health
 
 SW --> NM
 SW --> PM
+SW --> SCS
 SW --> AC
 SW --> IO
 PU ..> SW : chrome.runtime
@@ -91,5 +93,13 @@ note right of MODEL
   Produced offline. The service
   loads and verifies the artefact
   but never writes it.
+end note
+
+note bottom of VTC
+  Since ADR-017, votes and age
+  reach Risk Fusion too -- merged
+  by the Analyze Router into the
+  same feature vector SE consumes,
+  not a separate edge to RF.
 end note
 @enduml

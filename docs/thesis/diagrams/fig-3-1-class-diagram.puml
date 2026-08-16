@@ -24,8 +24,14 @@ package "Extension (Chrome MV3)" #F7F9FC {
     - observedCalls : string[]
     + evaluateRuleFlags() : string[]
   }
+  class ScamContentScanner <<module>> {
+    - SCAM_PHRASES : string[]
+    - SENSITIVE_FIELD_PATTERNS : Map<string,RegExp>
+    + scanPageText() : void
+  }
   class ApiClient <<module>> {
-    + analyzePage(url, network, permission) : Promise<Result>
+    + getClientId() : Promise<string>
+    + analyzePage(url, network, permission, scamContent) : Promise<Result>
   }
   class Popup <<module>> {
     + render() : Promise<void>
@@ -47,19 +53,22 @@ package "Backend (FastAPI)" #FCF7F7 {
     - _extract_domain(url) : str
   }
   class HistoryRouter <<boundary>> {
-    + get_history(limit, offset, db) : dict
-    + get_stats(db) : dict
-    + get_scan(scan_id, db) : dict
+    + get_history(limit, offset, client_id, db) : dict
+    + get_stats(client_id, db) : dict
+    + get_scan(scan_id, client_id, db) : dict
   }
   class AnalyzeRequest <<schema>> {
     url : HttpUrl
     network_signals : NetworkSignals
     permission_signals : PermissionSignals
+    scam_content_signals : ScamContentSignals
+    client_id : str
   }
   class AnalyzeResponse <<schema>> {
     scan_id : str
     verdict : str
     risk_score : float
+    risk_pct : int
     confidence_pct : int
     top_reasons : List<ShapReason>
     flagged_rules : List<str>
@@ -72,16 +81,20 @@ package "Backend (FastAPI)" #FCF7F7 {
   }
   class Scan <<entity>> {
     id : UUID
+    client_id : String(64)
     url : Text
     verdict : String(20)
     risk_score : Float
+    risk_pct : Integer
     confidence_pct : Integer
     url_features : JSONB
     network_signals : JSONB
     permission_signals : JSONB
+    scam_content_signals : JSONB
     shap_values : JSONB
     flagged_rules : JSONB
     created_at : DateTime
+    last_scanned_at : DateTime
     + to_dict() : dict
   }
   class UrlFeatureExtractor <<utility>> {
@@ -92,7 +105,7 @@ package "Backend (FastAPI)" #FCF7F7 {
     - _load_brand_list() : set
   }
   class HeuristicsEngine <<utility>> {
-    + evaluate(network, permission) : tuple
+    + evaluate(network, permission, scam_content) : tuple
   }
   class VirusTotalClient <<utility>> {
     - _VT_CACHE : TTLCache
@@ -105,7 +118,7 @@ package "Backend (FastAPI)" #FCF7F7 {
     - _load_templates() : dict
   }
   class RiskFusion <<utility>> {
-    - WEIGHTS : dict
+    - SIGNAL_WEIGHTS : dict
     + fuse(p_url, signals) : tuple
     - _logit(p) : float
     - _sigmoid(z) : float
@@ -149,6 +162,7 @@ RiskFusion --> ExplainerFormatter
 ServiceWorker --> ApiClient
 ServiceWorker --> NetworkMonitor
 ServiceWorker --> PermissionMonitor
+ServiceWorker --> ScamContentScanner
 NetworkMonitor "1" *-- "0..*" TabSignal
 ApiClient ..> AnalyzeRouter : HTTPS
 Popup ..> ServiceWorker : chrome.runtime messaging

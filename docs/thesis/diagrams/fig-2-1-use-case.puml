@@ -46,10 +46,17 @@ UC03 ..> UC02 : <<extend>>
 UC09 --> VT
 
 note bottom of UC09
-  Display only. A VirusTotal
-  failure degrades presentation
-  and never alters a verdict
-  (ADR-013).
+  Never a DetectionModel input
+  (ADR-013) -- but since ADR-017,
+  its votes and age narrowly and
+  asymmetrically feed the fusion
+  score too, not display only.
+  A VirusTotal failure still can
+  only ever degrade presentation:
+  missing data (-1 sentinels)
+  satisfies none of the gated
+  fusion conditions, so it never
+  alters a verdict.
 end note
 
 note bottom of UC11

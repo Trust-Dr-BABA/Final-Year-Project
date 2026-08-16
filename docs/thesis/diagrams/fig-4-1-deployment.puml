@@ -48,7 +48,7 @@ SWK ..> API : HTTPS / JSON\nPOST /analyze\n«protocol: TLS 1.3»
 SWK ..> DASH : HTTPS\nopens report tab
 DASH ..> API : HTTPS / JSON\nGET /history, /stats, /scan/{id}
 API ..> PG : TCP 5432\nasyncpg, connection pool
-API ..> VTAPI : HTTPS\n5 s timeout, 1 h TTL cache
+API ..> VTAPI : HTTPS\n2.5 s timeout, 1 h TTL cache
 CI ..> API : deploy on push to main
 
 note bottom of SWK
@@ -59,8 +59,15 @@ note bottom of SWK
 end note
 
 note bottom of PG
-  Schema managed by Alembic.
-  Revision ab476f0dcf44 creates
-  the scans table.
+  Schema managed by Alembic, five
+  linear revisions from ab476f0dcf44
+  (creates the scans table) through
+  f48ff135cc1a (last_scanned_at).
+end note
+
+note bottom of API
+  Runs as an unprivileged container
+  user, not root -- nothing in this
+  image needs root privileges.
 end note
 @enduml
