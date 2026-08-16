@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 
 dependencies = [
     # Web framework
-    "fastapi==0.111.0",
+    "fastapi==0.141.1",
     "uvicorn[standard]==0.29.0",
     # Database
     "sqlalchemy[asyncio]==2.0.30",
