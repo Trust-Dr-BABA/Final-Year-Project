@@ -72,6 +72,14 @@ jobs:
           echo "Backend never became healthy:"; cat backend.log; exit 1
 
       - run: npm install
+      # package-lock.json was generated on Windows. npm only fully resolves (with a downloadable,
+      # integrity-hashed lockfile entry) the optional native-binary variant matching the platform
+      # it ran on, even though the parent package (correctly) lists every platform in its own
+      # optionalDependencies — so a plain `npm install` here has nothing to fetch for Linux and
+      # next dev fails at request time with "Cannot find module '.../lightningcss.linux-x64-gnu.node'".
+      # Versions must match dashboard/package-lock.json's resolved lightningcss / @tailwindcss/oxide.
+      - run: npm install lightningcss-linux-x64-gnu@1.32.0 @tailwindcss/oxide-linux-x64-gnu@4.3.3 --no-save
+        working-directory: dashboard
       - run: npx playwright install --with-deps chromium
         working-directory: e2e
       - run: npm run test:e2e:ci
