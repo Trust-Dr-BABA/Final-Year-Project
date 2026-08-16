@@ -31,18 +31,13 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from backend.services.risk_fusion import _logit  # noqa: E402
 from ml.scripts.evaluate_baselines import FEATURE_COLS, FEATURES_PATH, fit_xgboost, temporal_split  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
 
 REPORT_PATH = Path(__file__).parent.parent / "reports" / "evaluation_report.md"
-_EPSILON = 1e-6
-
-
-def _logit(p: np.ndarray) -> np.ndarray:
-    p = np.clip(p, _EPSILON, 1 - _EPSILON)
-    return np.log(p / (1 - p))
 
 
 # For one row, neutralise its top-3 SHAP-attributed features to the training medians and
@@ -59,7 +54,10 @@ def _ablate_one(model, medians: pd.Series, row: pd.Series, shap_row: np.ndarray)
 
     p_before = model.predict_proba(row[FEATURE_COLS].to_frame().T)[0][1]
     p_after = model.predict_proba(modified[FEATURE_COLS].to_frame().T)[0][1]
-    observed_shift = float(_logit(np.array([p_after]))[0] - _logit(np.array([p_before]))[0])
+    # risk_fusion._logit is a scalar function (shared with the serving path, ADR-014) — no need
+    # for faithfulness.py's own numpy-array version, which was never actually called with more
+    # than one element at a time anyway.
+    observed_shift = float(_logit(p_after) - _logit(p_before))
 
     return predicted_shift, observed_shift
 
