@@ -3,6 +3,11 @@
 Returns domain_age_days, vt_malicious_votes, and vt_harmless_votes.
 Caches responses in memory for a short TTL to avoid repeated API calls.
 If the API key is missing or any error occurs, returns default values of -1.
+
+Called synchronously from backend/routers/analyze.py, before scoring — vt_malicious_votes now
+participates in the fused score (risk_fusion.py's asymmetric weight, added 2026-08-15 at Hammad's
+request), so /analyze genuinely waits on this. The timeout below is kept short specifically because
+of that: a slow VT response is now request latency, not a background-task delay.
 """
 
 import logging
@@ -34,7 +39,7 @@ async def _fetch_domain_info(domain: str) -> dict[str, int]:
     headers = {"x-apikey": api_key}
 
     try:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=2.5) as client:
             response = await client.get(url, headers=headers)
             response.raise_for_status()
             payload = response.json()
@@ -73,7 +78,10 @@ async def _fetch_domain_info(domain: str) -> dict[str, int]:
     }
 
 
-# Return cached or freshly fetched VT domain data; display-only, never a trained feature (ADR-013).
+# Return cached or freshly fetched VT domain data. Never a trained model feature (ADR-013's
+# feature_columns.json still excludes it — the training-corpus circularity argument stands
+# unchanged), but since 2026-08-15 it does feed the fusion layer's asymmetric vt_malicious_votes
+# weight (risk_fusion.py).
 async def get_domain_info(domain: str) -> dict[str, int]:
     if not domain:
         return _DEFAULT_VT_DATA.copy()

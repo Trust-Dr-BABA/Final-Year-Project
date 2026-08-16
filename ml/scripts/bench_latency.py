@@ -1,11 +1,14 @@
 """
 bench_latency.py — Measures POST /analyze wall-clock latency, cold and warm VirusTotal cache.
 
-The dominant cost in a request is the VirusTotal lookup (5s timeout on a cache miss); everything
-else — feature extraction, XGBoost inference, SHAP attribution, fusion — is local computation on a
-single row and is fast by comparison. Cold and warm are measured as genuinely separate conditions
-using the *same* set of distinct domains twice: the first pass populates the 1-hour TTL cache
-(backend/services/virustotal_client.py), the second pass hits it.
+VirusTotal is fetched synchronously on the request path (backend/routers/analyze.py) — it was never
+a trained feature (ADR-013's feature_columns.json still excludes it), but since 2026-08-15
+vt_malicious_votes feeds the fused score (risk_fusion.py's asymmetric weight), so /analyze
+genuinely waits on it again. Cold and warm VT cache state should therefore now show a *real* gap:
+cold pays VT's own request latency, warm should be close to the no-VT baseline. Cold and warm are
+measured as separate conditions, using the *same* set of distinct domains twice: the first pass
+populates the 1-hour TTL cache (backend/services/virustotal_client.py), the second pass hits it —
+this now measures VT's actual cost, not just guarding against a regression onto the blocking path.
 
 The cold pass is paced (~15s between requests) to stay under VirusTotal's free-tier rate limit
 (4 requests/minute) — an unpaced burst would trip VT's own rate limiting and measure "how fast VT
